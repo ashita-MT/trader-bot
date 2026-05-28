@@ -36,7 +36,7 @@ async def get_config():
 async def set_config(request: Request):
     body = await request.json()
     for k, v in body.items():
-        if k in ("interaction_mode", "bot_name", "web_port", "enable_real_stocks", "enable_virtual_stocks", "enable_real_refresh", "enable_virtual_refresh", "real_refresh_interval", "virtual_refresh_interval", "enable_lottery", "lottery_interval", "lottery_ticket_price", "lottery_prize_amount", "lottery_max_tickets"):
+        if k in ("interaction_mode", "bot_name", "web_port", "enable_real_stocks", "enable_virtual_stocks", "enable_real_refresh", "enable_virtual_refresh", "real_refresh_interval", "virtual_refresh_interval", "enable_number_lottery", "number_lottery_interval", "number_lottery_ticket_price", "number_lottery_prize_amount", "number_lottery_max_tickets", "enable_pool_lottery", "pool_lottery_interval", "pool_lottery_ticket_price", "pool_lottery_winners"):
             config.set(k, v)
     return JSONResponse(config.get())
 

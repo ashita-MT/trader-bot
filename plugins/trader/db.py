@@ -67,17 +67,33 @@ def init_db():
             date TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS lottery_draws (
+        CREATE TABLE IF NOT EXISTS number_lottery_draws (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             round INTEGER UNIQUE NOT NULL,
             winning_number INTEGER,
             drawn_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS lottery_tickets (
+        CREATE TABLE IF NOT EXISTS number_lottery_tickets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             number INTEGER NOT NULL,
+            round INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS pool_lottery_draws (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            round INTEGER UNIQUE NOT NULL,
+            total_pool REAL DEFAULT 0,
+            winners_count INTEGER DEFAULT 0,
+            drawn_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS pool_lottery_tickets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             round INTEGER NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id)

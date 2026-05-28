@@ -11,7 +11,8 @@ from .handlers.account import handle_register, handle_balance
 from .handlers.trade import handle_buy, handle_sell, handle_holdings
 from .handlers.market_view import handle_market
 from .handlers.work import handle_work
-from .handlers.lottery import handle_buy_ticket, handle_lottery_history, handle_my_tickets
+from .handlers.number_lottery import handle_buy_number_lottery, handle_number_lottery_history, handle_my_number_tickets
+from .handlers.pool_lottery import handle_buy_pool_ticket, handle_pool_lottery_info, handle_pool_lottery_history, handle_my_pool_tickets
 
 
 HELP_TEXT = (
@@ -22,10 +23,16 @@ HELP_TEXT = (
     "卖出 X N      - sell N shares of X\n"
     "持仓          - view holdings\n"
     "行情          - view all stocks\n"
-    "打工          - work once per day (1000-10000)\n"
-    "买彩票 N      - buy lottery ticket with number N\n"
-    "彩票历史      - last winning number\n"
-    "我的彩票      - my tickets\n"
+    "打工          - work once per day (1000-10000)\n\n"
+    "--- 号码彩 ---\n"
+    "买号码彩 N    - buy number lottery ticket\n"
+    "号码彩历史    - last winning number\n"
+    "我的号码彩    - my number tickets\n\n"
+    "--- 奖池彩 ---\n"
+    "买奖池彩      - buy pool lottery ticket\n"
+    "奖池彩        - pool lottery info\n"
+    "奖池彩历史    - last draw result\n"
+    "我的奖池彩    - my pool tickets\n\n"
     "帮助          - show help\n"
 )
 
@@ -39,14 +46,15 @@ HELP_KEYBOARD = build_keyboard([
         {"id": "btn_hold", "label": "持仓", "data": "持仓", "style": 1},
     ],
     [
-        {"id": "btn_lottery", "label": "彩票", "data": "彩票", "style": 1},
+        {"id": "btn_number_lottery", "label": "号码彩", "data": "号码彩历史", "style": 1},
+        {"id": "btn_pool_lottery", "label": "奖池彩", "data": "奖池彩", "style": 1},
     ],
 ])
 
 
 class Plugin(BasePlugin):
     name = "trader"
-    version = "1.7.0"
+    version = "1.8.0"
     description = "QQ virtual stock trading plugin with lottery"
 
     def __init__(self):
@@ -58,10 +66,12 @@ class Plugin(BasePlugin):
         enable_virtual = bot_config.get("enable_virtual_stocks", True)
         enable_real_refresh = bot_config.get("enable_real_refresh", True)
         enable_virtual_refresh = bot_config.get("enable_virtual_refresh", True)
-        enable_lottery = bot_config.get("enable_lottery", True)
+        enable_number_lottery = bot_config.get("enable_number_lottery", True)
+        enable_pool_lottery = bot_config.get("enable_pool_lottery", True)
         real_interval = bot_config.get("real_refresh_interval", 300)
         virtual_interval = bot_config.get("virtual_refresh_interval", 300)
-        lottery_interval = bot_config.get("lottery_interval", 86400)
+        number_lottery_interval = bot_config.get("number_lottery_interval", 86400)
+        pool_lottery_interval = bot_config.get("pool_lottery_interval", 86400)
 
         if enable_real or enable_virtual:
             seed_stocks(enable_real=enable_real, enable_virtual=enable_virtual)
@@ -75,8 +85,12 @@ class Plugin(BasePlugin):
             self.scheduler.start_virtual(interval=virtual_interval)
             started = True
 
-        if enable_lottery:
-            self.scheduler.start_lottery(interval=lottery_interval)
+        if enable_number_lottery:
+            self.scheduler.start_number_lottery(interval=number_lottery_interval)
+            started = True
+
+        if enable_pool_lottery:
+            self.scheduler.start_pool_lottery(interval=pool_lottery_interval)
             started = True
 
         if started:
@@ -97,9 +111,13 @@ class Plugin(BasePlugin):
             "持仓": handle_holdings,
             "行情": handle_market,
             "打工": handle_work,
-            "买彩票": handle_buy_ticket,
-            "彩票历史": handle_lottery_history,
-            "我的彩票": handle_my_tickets,
+            "买号码彩": handle_buy_number_lottery,
+            "号码彩历史": handle_number_lottery_history,
+            "我的号码彩": handle_my_number_tickets,
+            "买奖池彩": handle_buy_pool_ticket,
+            "奖池彩": handle_pool_lottery_info,
+            "奖池彩历史": handle_pool_lottery_history,
+            "我的奖池彩": handle_my_pool_tickets,
             "帮助": self._handle_help,
         }
 
