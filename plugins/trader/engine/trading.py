@@ -46,12 +46,12 @@ def buy_stock(qq_id, identifier, quantity):
         conn.close()
         return {"success": False, "msg": f"股票 {identifier} 不存在或未启用"}
 
-    total_cost = stock["current_price"] * quantity
+    total_cost = round(stock["current_price"] * quantity, 2)
     if user["balance"] < total_cost:
         conn.close()
         return {"success": False, "msg": f"余额不足，需要 {total_cost:.2f}，当前余额 {user['balance']:.2f}"}
 
-    new_balance = user["balance"] - total_cost
+    new_balance = round(user["balance"] - total_cost, 2)
     conn.execute("UPDATE users SET balance = ? WHERE qq_id = ?", (new_balance, qq_id))
 
     holding = conn.execute(
@@ -64,7 +64,7 @@ def buy_stock(qq_id, identifier, quantity):
         new_avg = (holding["avg_cost"] * holding["quantity"] + total_cost) / new_qty
         conn.execute(
             "UPDATE holdings SET quantity = ?, avg_cost = ? WHERE id = ?",
-            (new_qty, round(new_avg, 4), holding["id"]),
+            (new_qty, round(new_avg, 2), holding["id"]),
         )
     else:
         conn.execute(
@@ -83,6 +83,9 @@ def buy_stock(qq_id, identifier, quantity):
         "success": True,
         "msg": f"买入 {stock['name']}({stock['code']}) x{quantity}，花费 {total_cost:.2f}，剩余余额 {new_balance:.2f}",
     }
+
+
+SELL_FEE_RATE = 0.005  # 0.5%
 
 
 def sell_stock(qq_id, identifier, quantity):
@@ -108,8 +111,10 @@ def sell_stock(qq_id, identifier, quantity):
         conn.close()
         return {"success": False, "msg": f"持仓不足，当前持有 {stock['code']} {current} 股"}
 
-    total_income = stock["current_price"] * quantity
-    new_balance = user["balance"] + total_income
+    total_income = round(stock["current_price"] * quantity, 2)
+    fee = round(total_income * SELL_FEE_RATE, 2)
+    net_income = round(total_income - fee, 2)
+    new_balance = round(user["balance"] + net_income, 2)
     conn.execute("UPDATE users SET balance = ? WHERE qq_id = ?", (new_balance, qq_id))
 
     new_qty = holding["quantity"] - quantity
@@ -127,7 +132,7 @@ def sell_stock(qq_id, identifier, quantity):
     conn.close()
     return {
         "success": True,
-        "msg": f"卖出 {stock['name']}({stock['code']}) x{quantity}，收入 {total_income:.2f}，当前余额 {new_balance:.2f}",
+        "msg": f"卖出 {stock['name']}({stock['code']}) x{quantity}，收入 {total_income:.2f}，手续费 {fee:.2f}，当前余额 {new_balance:.2f}",
     }
 
 

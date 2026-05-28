@@ -10,5 +10,7 @@
   "enable_real_refresh": true,
   "enable_virtual_refresh": true,
   "real_refresh_interval": 300,
-  "virtual_refresh_interval": 300
+  "virtual_refresh_interval": 300,
+  "enable_lottery": true,
+  "lottery_interval": 86400
 }

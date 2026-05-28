@@ -189,6 +189,11 @@ input[type=number]{-moz-appearance:textfield}
 <div class="row" id="virtual-interval-row"><label>refresh interval (sec)</label><input type="number" id="set-virtual-interval" value="300" min="10" style="width:100px;margin:0"></div>
 </div>
 <div class="card">
+<h2>lottery</h2>
+<div class="row"><label>enable</label><label class="toggle"><input type="checkbox" id="set-lottery" onchange="onLotteryToggle()"><span class="slider"></span></label></div>
+<div class="row" id="lottery-interval-row"><label>draw interval (sec)</label><input type="number" id="set-lottery-interval" value="86400" min="60" style="width:100px;margin:0"></div>
+</div>
+<div class="card">
 <h2>web port</h2>
 <div class="form-row">
 <input type="number" id="set-port-input" placeholder="port (e.g. 6662)" min="1" max="65535">
@@ -240,9 +245,12 @@ async function loadConfig() {
   document.getElementById('set-virtual').checked = cfg.enable_virtual_stocks !== false;
   document.getElementById('set-virtual-refresh').checked = cfg.enable_virtual_refresh !== false;
   document.getElementById('set-virtual-interval').value = cfg.virtual_refresh_interval || 300;
+  document.getElementById("set-lottery").checked = cfg.enable_lottery !== false;
+  document.getElementById("set-lottery-interval").value = cfg.lottery_interval || 86400;
   updateModeBtn();
   onRealToggle();
   onVirtualToggle();
+  onLotteryToggle();
 }
 
 async function loadDashboard() {
@@ -489,6 +497,12 @@ function onVirtualToggle() {
   document.getElementById('virtual-interval-row').style.opacity = on ? '1' : '0.5';
 }
 
+function onLotteryToggle() {
+  var on = document.getElementById("set-lottery").checked;
+  document.getElementById("set-lottery-interval").disabled = !on;
+  document.getElementById("lottery-interval-row").style.opacity = on ? "1" : "0.5";
+}
+
 async function saveSettings() {
   var port = parseInt(document.getElementById('set-port-input').value);
   if (isNaN(port) || port < 1 || port > 65535) { showToast('invalid port', true); return; }
@@ -505,7 +519,9 @@ async function saveSettings() {
       real_refresh_interval: realInterval,
       enable_virtual_stocks: document.getElementById('set-virtual').checked,
       enable_virtual_refresh: document.getElementById('set-virtual-refresh').checked,
-      virtual_refresh_interval: virtualInterval
+      virtual_refresh_interval: virtualInterval,
+      enable_lottery: document.getElementById("set-lottery").checked,
+      lottery_interval: parseInt(document.getElementById("set-lottery-interval").value) || 86400
     })});
     showToast('saved, restart to apply changes');
     await loadConfig();

@@ -1,5 +1,6 @@
 ﻿import sys
 import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 import config as bot_config
 from core.base import BasePlugin
 from core.keyboard import build_keyboard
@@ -10,6 +11,7 @@ from .handlers.account import handle_register, handle_balance
 from .handlers.trade import handle_buy, handle_sell, handle_holdings
 from .handlers.market_view import handle_market
 from .handlers.work import handle_work
+from .handlers.lottery import handle_buy_ticket, handle_lottery_info, handle_my_tickets
 
 
 HELP_TEXT = (
@@ -21,6 +23,10 @@ HELP_TEXT = (
     "持仓          - view holdings\n"
     "行情          - view all stocks\n"
     "打工          - work once per day (1000-10000)\n"
+    "买彩票 N      - buy lottery ticket with number N\n"
+    "彩票          - lottery info\n"
+    "我的彩票      - my tickets\n"
+    "帮助          - show help\n"
 )
 
 HELP_KEYBOARD = build_keyboard([
@@ -32,13 +38,16 @@ HELP_KEYBOARD = build_keyboard([
         {"id": "btn_market", "label": "行情", "data": "行情", "style": 1},
         {"id": "btn_hold", "label": "持仓", "data": "持仓", "style": 1},
     ],
+    [
+        {"id": "btn_lottery", "label": "彩票", "data": "彩票", "style": 1},
+    ],
 ])
 
 
 class Plugin(BasePlugin):
     name = "trader"
-    version = "1.6.0"
-    description = "QQ virtual stock trading plugin"
+    version = "1.7.0"
+    description = "QQ virtual stock trading plugin with lottery"
 
     def __init__(self):
         self.scheduler = MarketScheduler()
@@ -49,8 +58,10 @@ class Plugin(BasePlugin):
         enable_virtual = bot_config.get("enable_virtual_stocks", True)
         enable_real_refresh = bot_config.get("enable_real_refresh", True)
         enable_virtual_refresh = bot_config.get("enable_virtual_refresh", True)
+        enable_lottery = bot_config.get("enable_lottery", True)
         real_interval = bot_config.get("real_refresh_interval", 300)
         virtual_interval = bot_config.get("virtual_refresh_interval", 300)
+        lottery_interval = bot_config.get("lottery_interval", 86400)
 
         if enable_real or enable_virtual:
             seed_stocks(enable_real=enable_real, enable_virtual=enable_virtual)
@@ -62,6 +73,10 @@ class Plugin(BasePlugin):
 
         if enable_virtual and enable_virtual_refresh:
             self.scheduler.start_virtual(interval=virtual_interval)
+            started = True
+
+        if enable_lottery:
+            self.scheduler.start_lottery(interval=lottery_interval)
             started = True
 
         if started:
@@ -82,6 +97,9 @@ class Plugin(BasePlugin):
             "持仓": handle_holdings,
             "行情": handle_market,
             "打工": handle_work,
+            "买彩票": handle_buy_ticket,
+            "彩票": handle_lottery_info,
+            "我的彩票": handle_my_tickets,
             "帮助": self._handle_help,
         }
 

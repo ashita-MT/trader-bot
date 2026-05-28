@@ -19,7 +19,7 @@ async def handle_work(message, args):
         return
 
     amount = random.randint(1000, 10000)
-    new_balance = user["balance"] + amount
+    new_balance = round(user["balance"] + amount, 2)
 
     conn = get_db()
     conn.execute("UPDATE users SET balance=?, last_work=? WHERE qq_id=?", (new_balance, today, qq_id))
