@@ -1,0 +1,12 @@
+﻿__pycache__/
+*.pyc
+*.db
+data/stocks/
+bot_config.json
+.env
+*.log
+.idea/
+.vscode/
+venv/
+ARCHITECTURE.md
+config.yaml

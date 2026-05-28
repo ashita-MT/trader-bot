@@ -1,0 +1,8 @@
+{
+  "interaction_mode": "text",
+  "bot_name": "virtual stock market",
+  "admin_password": "admin123",
+  "web_port": 6662,
+  "appid": "YOUR_APP_ID",
+  "secret": "YOUR_APP_SECRET"
+}
