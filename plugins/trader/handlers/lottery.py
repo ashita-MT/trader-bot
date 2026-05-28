@@ -8,9 +8,18 @@ from core.utils import get_user_id
 from ..engine.trading import get_or_create_user
 from ..db import get_db
 
-TICKET_PRICE = 100
-PRIZE_AMOUNT = 10000
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+import config as bot_config
+
 NUMBER_RANGE = (1, 1000)
+
+
+def _get_settings():
+    return {
+        "ticket_price": bot_config.get("lottery_ticket_price", 100),
+        "prize_amount": bot_config.get("lottery_prize_amount", 10000),
+        "max_tickets": bot_config.get("lottery_max_tickets", 10),
+    }
 
 
 def get_current_round():
@@ -28,6 +37,7 @@ def get_last_draw():
 
 
 def draw_lottery():
+    settings = _get_settings()
     current_round = get_current_round()
     winning_number = random.randint(*NUMBER_RANGE)
 
@@ -42,8 +52,11 @@ def draw_lottery():
     """, (current_round, winning_number)).fetchall()
 
     for w in winners:
-        new_balance = round(w["balance"] + PRIZE_AMOUNT, 2)
+        new_balance = round(w["balance"] + settings["prize_amount"], 2)
         conn.execute("UPDATE users SET balance = ? WHERE id = ?", (new_balance, w["user_id"]))
+
+    # Destroy all tickets for this round
+    conn.execute("DELETE FROM lottery_tickets WHERE round = ?", (current_round,))
 
     conn.commit()
     conn.close()
@@ -54,9 +67,10 @@ async def handle_buy_ticket(message, args):
     qq_id = get_user_id(message)
     nickname = getattr(message.author, "username", "") or ""
     user = get_or_create_user(qq_id, nickname)
+    settings = _get_settings()
 
     if not args:
-        await message.reply(content=f"格式: 买彩票 数字\n范围: {NUMBER_RANGE[0]}-{NUMBER_RANGE[1]}\n票价: {TICKET_PRICE}")
+        await message.reply(content=f"格式: 买彩票 数字\n范围: {NUMBER_RANGE[0]}-{NUMBER_RANGE[1]}\n票价: {settings['ticket_price']}\n每人最多: {settings['max_tickets']}张")
         return
 
     try:
@@ -69,59 +83,40 @@ async def handle_buy_ticket(message, args):
         await message.reply(content=f"数字范围: {NUMBER_RANGE[0]}-{NUMBER_RANGE[1]}")
         return
 
-    if user["balance"] < TICKET_PRICE:
-        await message.reply(content=f"余额不足，票价 {TICKET_PRICE}，当前余额 {user['balance']:.2f}")
+    current_round = get_current_round()
+
+    # Check max tickets
+    conn = get_db()
+    my_count = conn.execute("SELECT COUNT(*) as c FROM lottery_tickets WHERE user_id = ? AND round = ?",
+                            (user["id"], current_round)).fetchone()["c"]
+    if my_count >= settings["max_tickets"]:
+        conn.close()
+        await message.reply(content=f"每人每期最多 {settings['max_tickets']} 张，当前已持有 {my_count} 张")
         return
 
-    current_round = get_current_round()
-    new_balance = round(user["balance"] - TICKET_PRICE, 2)
+    if user["balance"] < settings["ticket_price"]:
+        conn.close()
+        await message.reply(content=f"余额不足，票价 {settings['ticket_price']}，当前余额 {user['balance']:.2f}")
+        return
 
-    conn = get_db()
+    new_balance = round(user["balance"] - settings["ticket_price"], 2)
     conn.execute("UPDATE users SET balance = ? WHERE qq_id = ?", (new_balance, qq_id))
     conn.execute("INSERT INTO lottery_tickets (user_id, number, round) VALUES (?, ?, ?)",
                  (user["id"], number, current_round))
     conn.commit()
     conn.close()
 
-    await message.reply(content=f"购买成功！第{current_round}期 号码: {number}\n票价: {TICKET_PRICE}，余额: {new_balance:.2f}")
+    await message.reply(content=f"购买成功！第{current_round}期 号码: {number}\n票价: {settings['ticket_price']}，余额: {new_balance:.2f}")
 
 
-async def handle_lottery_info(message, args):
+async def handle_lottery_history(message, args):
     last_draw = get_last_draw()
-    current_round = get_current_round()
 
-    if last_draw:
-        lines = [
-            f"=== lottery ===",
-            f"第{last_draw['round']}期 中奖号码: {last_draw['winning_number']}",
-            f"当前期: 第{current_round}期",
-            f"票价: {TICKET_PRICE}",
-            f"奖金: {PRIZE_AMOUNT}",
-            f"范围: {NUMBER_RANGE[0]}-{NUMBER_RANGE[1]}",
-        ]
-    else:
-        lines = [
-            f"=== lottery ===",
-            f"尚未开奖",
-            f"当前期: 第{current_round}期",
-            f"票价: {TICKET_PRICE}",
-            f"奖金: {PRIZE_AMOUNT}",
-            f"范围: {NUMBER_RANGE[0]}-{NUMBER_RANGE[1]}",
-        ]
+    if not last_draw or last_draw["winning_number"] is None:
+        await message.reply(content="暂无中奖记录")
+        return
 
-    # Show user tickets for current round
-    qq_id = get_user_id(message)
-    conn = get_db()
-    user = conn.execute("SELECT id FROM users WHERE qq_id = ?", (qq_id,)).fetchone()
-    if user:
-        tickets = conn.execute("SELECT number FROM lottery_tickets WHERE user_id = ? AND round = ?",
-                               (user["id"], current_round)).fetchall()
-        if tickets:
-            nums = ", ".join([str(t["number"]) for t in tickets])
-            lines.append(f"你的号码: {nums}")
-    conn.close()
-
-    await message.reply(content="\n".join(lines))
+    await message.reply(content=f"第{last_draw['round']}期 中奖号码: {last_draw['winning_number']}")
 
 
 async def handle_my_tickets(message, args):
@@ -143,4 +138,5 @@ async def handle_my_tickets(message, args):
         return
 
     nums = ", ".join([str(t["number"]) for t in tickets])
-    await message.reply(content=f"第{current_round}期 你的号码: {nums}\n共 {len(tickets)} 张")
+    settings = _get_settings()
+    await message.reply(content=f"第{current_round}期 你的号码: {nums}\n共 {len(tickets)}/{settings['max_tickets']} 张")

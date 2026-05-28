@@ -18,7 +18,10 @@ DEFAULT_CONFIG = {
     "real_refresh_interval": 300,
     "virtual_refresh_interval": 300,
     "enable_lottery": true,
-    "lottery_interval": 86400
+    "lottery_interval": 86400,
+    "lottery_ticket_price": 100,
+    "lottery_prize_amount": 10000,
+    "lottery_max_tickets": 10
 }
 
 

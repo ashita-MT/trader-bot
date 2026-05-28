@@ -192,6 +192,9 @@ input[type=number]{-moz-appearance:textfield}
 <h2>lottery</h2>
 <div class="row"><label>enable</label><label class="toggle"><input type="checkbox" id="set-lottery" onchange="onLotteryToggle()"><span class="slider"></span></label></div>
 <div class="row" id="lottery-interval-row"><label>draw interval (sec)</label><input type="number" id="set-lottery-interval" value="86400" min="60" style="width:100px;margin:0"></div>
+<div class="row" id="lottery-price-row"><label>ticket price</label><input type="number" id="set-lottery-price" value="100" min="1" style="width:100px;margin:0"></div>
+<div class="row" id="lottery-prize-row"><label>prize amount</label><input type="number" id="set-lottery-prize" value="10000" min="1" style="width:100px;margin:0"></div>
+<div class="row" id="lottery-max-row"><label>max tickets per person</label><input type="number" id="set-lottery-max" value="10" min="1" max="100" style="width:100px;margin:0"></div>
 </div>
 <div class="card">
 <h2>web port</h2>
@@ -247,6 +250,9 @@ async function loadConfig() {
   document.getElementById('set-virtual-interval').value = cfg.virtual_refresh_interval || 300;
   document.getElementById("set-lottery").checked = cfg.enable_lottery !== false;
   document.getElementById("set-lottery-interval").value = cfg.lottery_interval || 86400;
+  document.getElementById("set-lottery-price").value = cfg.lottery_ticket_price || 100;
+  document.getElementById("set-lottery-prize").value = cfg.lottery_prize_amount || 10000;
+  document.getElementById("set-lottery-max").value = cfg.lottery_max_tickets || 10;
   updateModeBtn();
   onRealToggle();
   onVirtualToggle();
@@ -500,7 +506,13 @@ function onVirtualToggle() {
 function onLotteryToggle() {
   var on = document.getElementById("set-lottery").checked;
   document.getElementById("set-lottery-interval").disabled = !on;
+  document.getElementById("set-lottery-price").disabled = !on;
+  document.getElementById("set-lottery-prize").disabled = !on;
+  document.getElementById("set-lottery-max").disabled = !on;
   document.getElementById("lottery-interval-row").style.opacity = on ? "1" : "0.5";
+  document.getElementById("lottery-price-row").style.opacity = on ? "1" : "0.5";
+  document.getElementById("lottery-prize-row").style.opacity = on ? "1" : "0.5";
+  document.getElementById("lottery-max-row").style.opacity = on ? "1" : "0.5";
 }
 
 async function saveSettings() {
@@ -521,7 +533,10 @@ async function saveSettings() {
       enable_virtual_refresh: document.getElementById('set-virtual-refresh').checked,
       virtual_refresh_interval: virtualInterval,
       enable_lottery: document.getElementById("set-lottery").checked,
-      lottery_interval: parseInt(document.getElementById("set-lottery-interval").value) || 86400
+      lottery_interval: parseInt(document.getElementById("set-lottery-interval").value) || 86400,
+      lottery_ticket_price: parseInt(document.getElementById("set-lottery-price").value) || 100,
+      lottery_prize_amount: parseInt(document.getElementById("set-lottery-prize").value) || 10000,
+      lottery_max_tickets: parseInt(document.getElementById("set-lottery-max").value) || 10
     })});
     showToast('saved, restart to apply changes');
     await loadConfig();

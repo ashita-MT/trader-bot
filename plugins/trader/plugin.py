@@ -11,7 +11,7 @@ from .handlers.account import handle_register, handle_balance
 from .handlers.trade import handle_buy, handle_sell, handle_holdings
 from .handlers.market_view import handle_market
 from .handlers.work import handle_work
-from .handlers.lottery import handle_buy_ticket, handle_lottery_info, handle_my_tickets
+from .handlers.lottery import handle_buy_ticket, handle_lottery_history, handle_my_tickets
 
 
 HELP_TEXT = (
@@ -24,7 +24,7 @@ HELP_TEXT = (
     "行情          - view all stocks\n"
     "打工          - work once per day (1000-10000)\n"
     "买彩票 N      - buy lottery ticket with number N\n"
-    "彩票          - lottery info\n"
+    "彩票历史      - last winning number\n"
     "我的彩票      - my tickets\n"
     "帮助          - show help\n"
 )
@@ -98,7 +98,7 @@ class Plugin(BasePlugin):
             "行情": handle_market,
             "打工": handle_work,
             "买彩票": handle_buy_ticket,
-            "彩票": handle_lottery_info,
+            "彩票历史": handle_lottery_history,
             "我的彩票": handle_my_tickets,
             "帮助": self._handle_help,
         }
