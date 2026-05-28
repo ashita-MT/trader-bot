@@ -42,7 +42,15 @@ async def get_config():
 async def set_config(request: Request):
     body = await request.json()
     for k, v in body.items():
-        if k in ("interaction_mode", "bot_name", "web_port", "enable_real_stocks", "enable_virtual_stocks", "enable_real_refresh", "enable_virtual_refresh", "real_refresh_interval", "virtual_refresh_interval"):
+        if k in ("interaction_mode", "bot_name", "web_port",
+                 "enable_real_stocks", "enable_virtual_stocks",
+                 "enable_real_refresh", "enable_virtual_refresh",
+                 "real_refresh_interval", "virtual_refresh_interval",
+                 "enable_number_lottery", "number_lottery_interval",
+                 "number_lottery_ticket_price", "number_lottery_prize_amount",
+                 "number_lottery_max_tickets",
+                 "enable_pool_lottery", "pool_lottery_interval",
+                 "pool_lottery_ticket_price", "pool_lottery_winners_pct", "pool_lottery_max_tickets"):
             config.set(k, v)
     return JSONResponse(config.get())
 
@@ -190,6 +198,39 @@ async def delete_virtual_stock(code: str):
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
+
+
+@app.get("/api/lottery")
+async def get_lottery():
+    try:
+        conn = get_db()
+        nl_tickets = conn.execute("SELECT COUNT(*) FROM number_lottery_tickets t JOIN number_lottery_draws d ON t.round = d.round WHERE d.winning_number IS NULL").fetchone()[0]
+        nl_draw = conn.execute("SELECT MAX(round) FROM number_lottery_draws").fetchone()[0] or 0
+        nl_last = conn.execute("SELECT winning_number FROM number_lottery_draws WHERE winning_number IS NOT NULL ORDER BY round DESC LIMIT 1").fetchone()
+        nl_last_num = nl_last[0] if nl_last else None
+        pl_tickets = conn.execute("SELECT COUNT(*) FROM pool_lottery_tickets t JOIN pool_lottery_draws d ON t.round = d.round WHERE d.total_pool = 0").fetchone()[0]
+        pl_draw = conn.execute("SELECT MAX(round) FROM pool_lottery_draws").fetchone()[0] or 0
+        pl_last = conn.execute("SELECT winners_count, total_pool FROM pool_lottery_draws WHERE total_pool > 0 ORDER BY round DESC LIMIT 1").fetchone()
+        conn.close()
+        return JSONResponse({
+            "nl_enabled": config.get("enable_number_lottery", True),
+            "nl_round": nl_draw + 1,
+            "nl_tickets": nl_tickets,
+            "nl_last": str(nl_last_num) if nl_last_num else None,
+            "pl_enabled": config.get("enable_pool_lottery", True),
+            "pl_round": pl_draw + 1,
+            "pl_tickets": pl_tickets,
+            "pl_pool": 0,
+            "pl_last": f"{pl_last[0]} winners" if pl_last else None,
+            "pl_pct": config.get("pool_lottery_winners_pct", 10),
+        })
+    except Exception as e:
+        return JSONResponse({
+            "nl_enabled": config.get("enable_number_lottery", True),
+            "nl_round": 1, "nl_tickets": 0, "nl_last": None,
+            "pl_enabled": config.get("enable_pool_lottery", True),
+            "pl_round": 1, "pl_tickets": 0, "pl_pool": 0, "pl_last": None, "pl_pct": 10,
+        })
 
 @app.get("/api/users")
 async def get_users():

@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 import config as bot_config
@@ -15,41 +15,74 @@ from .handlers.number_lottery import handle_buy_number_lottery, handle_number_lo
 from .handlers.pool_lottery import handle_buy_pool_ticket, handle_pool_lottery_info, handle_pool_lottery_history, handle_my_pool_tickets
 
 
-HELP_TEXT = (
-    "=== trader ===\n\n"
-    "开户          - create account\n"
-    "查余额        - check balance\n"
-    "买入 X N      - buy N shares of X\n"
-    "卖出 X N      - sell N shares of X\n"
-    "持仓          - view holdings\n"
-    "行情          - view all stocks\n"
-    "打工          - work once per day (1000-10000)\n\n"
-    "--- 号码彩 ---\n"
-    "买号码彩 N    - buy number lottery ticket\n"
-    "号码彩历史    - last winning number\n"
-    "我的号码彩    - my number tickets\n\n"
-    "--- 奖池彩 ---\n"
-    "买奖池彩      - buy pool lottery ticket\n"
-    "奖池彩        - pool lottery info\n"
-    "奖池彩历史    - last draw result\n"
-    "我的奖池彩    - my pool tickets\n\n"
-    "帮助          - show help\n"
-)
+# Command registry: (command, description, tag, keyboard_label, keyboard_data, keyboard_id)
+COMMAND_REGISTRY = [
+    ("开户",   "开户          - 开通账户",       "core",   "开户",   "开户",   "btn_register"),
+    ("查余额", "查余额        - 查看余额",       "core",   "查余额", "查余额", "btn_balance"),
+    ("买入",   "买入 股票 数量  - 买入指定数量的股票", "core", None, None, None),
+    ("卖出",   "卖出 股票 数量  - 卖出指定数量的股票", "core", None, None, None),
+    ("持仓",   "持仓          - 查看持仓",       "core",   "持仓",   "持仓",   "btn_hold"),
+    ("打工",   "打工          - 每日打工 (1000-10000)", "work", None, None, None),
+    ("行情",   "行情          - 查看所有股票",     "market", "行情", "行情", "btn_market"),
+    ("买号码彩", "买号码彩 号码  - 购买号码彩票",   "number_lottery", None, None, None),
+    ("号码彩历史", "号码彩历史    - 查看上次中奖号码", "number_lottery", "号码彩", "号码彩历史", "btn_number_lottery"),
+    ("我的号码彩", "我的号码彩    - 查看我的号码彩",  "number_lottery", None, None, None),
+    ("买奖池彩", "买奖池彩      - 购买奖池彩票",   "pool_lottery", None, None, None),
+    ("奖池彩",   "奖池彩        - 查看奖池信息",   "pool_lottery", "奖池彩", "奖池彩", "btn_pool_lottery"),
+    ("奖池彩历史", "奖池彩历史    - 查看上次开奖结果", "pool_lottery", None, None, None),
+    ("我的奖池彩", "我的奖池彩    - 查看我的奖池彩",  "pool_lottery", None, None, None),
+    ("帮助",   "帮助          - 显示帮助",       "core", None, None, None),
+]
 
-HELP_KEYBOARD = build_keyboard([
-    [
-        {"id": "btn_register", "label": "开户", "data": "开户", "style": 1},
-        {"id": "btn_balance", "label": "查余额", "data": "查余额", "style": 1},
-    ],
-    [
-        {"id": "btn_market", "label": "行情", "data": "行情", "style": 1},
-        {"id": "btn_hold", "label": "持仓", "data": "持仓", "style": 1},
-    ],
-    [
-        {"id": "btn_number_lottery", "label": "号码彩", "data": "号码彩历史", "style": 1},
-        {"id": "btn_pool_lottery", "label": "奖池彩", "data": "奖池彩", "style": 1},
-    ],
-])
+TAG_TITLES = {
+    "core": None,
+    "work": None,
+    "market": "--- 股市 ---",
+    "number_lottery": "--- 号码彩 ---",
+    "pool_lottery": "--- 奖池彩 ---",
+}
+
+
+def _is_tag_enabled(tag):
+    if tag == "core":
+        return True
+    if tag == "work":
+        return True
+    if tag == "market":
+        return bot_config.get("enable_real_stocks", True) or bot_config.get("enable_virtual_stocks", True)
+    if tag == "number_lottery":
+        return bot_config.get("enable_number_lottery", True)
+    if tag == "pool_lottery":
+        return bot_config.get("enable_pool_lottery", True)
+    return True
+
+
+def build_help_text():
+    lines = ["=== 交易员 ===", ""]
+    current_tag = None
+    for cmd, desc, tag, *_ in COMMAND_REGISTRY:
+        if not _is_tag_enabled(tag):
+            continue
+        if tag != current_tag:
+            title = TAG_TITLES.get(tag)
+            if title:
+                if current_tag is not None:
+                    lines.append("")
+                lines.append(title)
+            current_tag = tag
+        lines.append(desc)
+    lines.append("")
+    return "\n".join(lines)
+
+
+def build_help_keyboard():
+    buttons = []
+    for cmd, desc, tag, label, data, btn_id in COMMAND_REGISTRY:
+        if not _is_tag_enabled(tag):
+            continue
+        if label and data and btn_id:
+            buttons.append([{"id": btn_id, "label": label, "data": data, "style": 1}])
+    return build_keyboard(buttons)
 
 
 class Plugin(BasePlugin):
@@ -123,20 +156,22 @@ class Plugin(BasePlugin):
 
     async def _handle_help(self, message, args):
         import json
+        help_text = build_help_text()
         mode = bot_config.get_mode()
         is_interaction = hasattr(message, "_interaction")
 
         if is_interaction:
-            await message.reply(content=HELP_TEXT)
+            await message.reply(content=help_text)
             return
 
         if mode == "button":
             has_keyboard = hasattr(message, "_api") and hasattr(message, "channel_id")
             if has_keyboard and message.channel_id:
                 try:
-                    await message.reply(content=HELP_TEXT, keyboard=json.dumps(HELP_KEYBOARD))
+                    keyboard = build_help_keyboard()
+                    await message.reply(content=help_text, keyboard=json.dumps(keyboard))
                     return
                 except Exception:
                     pass
 
-        await message.reply(content=HELP_TEXT)
+        await message.reply(content=help_text)

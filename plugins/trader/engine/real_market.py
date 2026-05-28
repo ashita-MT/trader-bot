@@ -1,9 +1,9 @@
-﻿import re
+import re
 import urllib.request
 import sys
 import os
 
-from .data.local_cache import load_quote, save_quote, load_history
+from ..data.local_cache import load_quote, save_quote, load_history
 
 TENCENT_QUOTE_URL = "https://qt.gtimg.cn/q={}"
 TENCENT_KLINE_URL = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={market}{code},day,,,{days},qfq"
