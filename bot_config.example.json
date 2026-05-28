@@ -1,0 +1,14 @@
+{
+  "appid": "YOUR_APP_ID",
+  "secret": "YOUR_APP_SECRET",
+  "interaction_mode": "text",
+  "bot_name": "trader",
+  "admin_password": "admin123",
+  "web_port": 6662,
+  "enable_real_stocks": true,
+  "enable_virtual_stocks": true,
+  "enable_real_refresh": true,
+  "enable_virtual_refresh": true,
+  "real_refresh_interval": 300,
+  "virtual_refresh_interval": 300
+}

@@ -1,0 +1,535 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bot Admin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex}
+.sidebar{width:200px;background:#1e293b;border-right:1px solid #334155;padding:16px;flex-shrink:0;transition:width .3s, padding .3s;overflow:hidden}
+.sidebar.collapsed{width:36px;padding:8px}
+.toggle-btn{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;background:transparent;color:#64748b;font-size:12px;cursor:pointer;margin-bottom:12px;transition:color .2s;padding:0}
+.toggle-btn:hover{color:#e2e8f0}
+.toggle-btn .arrow{transition:transform .3s;display:inline-block;line-height:1}
+.sidebar.collapsed .toggle-btn .arrow{transform:rotate(180deg)}
+.menu-item{padding:10px 12px;border-radius:8px;cursor:pointer;color:#94a3b8;font-size:14px;margin-bottom:4px;transition:all .2s;white-space:nowrap;overflow:hidden}
+.menu-item:hover{background:#334155;color:#e2e8f0}
+.menu-item.active{background:#1e3a5f;color:#60a5fa}
+.sidebar.collapsed .menu-item{padding:10px 6px;font-size:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+.sidebar.collapsed .menu-item::first-letter{font-size:14px}
+.main{flex:1;padding:24px 32px;overflow-y:auto}
+.section{display:none}
+.section.active{display:block}
+.card{background:#1e293b;border-radius:12px;padding:24px;margin-bottom:20px;border:1px solid #334155}
+.card h2{font-size:12px;font-weight:600;margin-bottom:16px;color:#64748b;letter-spacing:1px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #0f172a}
+.row:last-child{border:none}
+.row label{color:#94a3b8;font-size:13px}
+.row .val{color:#f8fafc;font-weight:500;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:#64748b;font-weight:500;padding:10px 12px;border-bottom:1px solid #334155;font-size:11px;letter-spacing:.5px}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:#e2e8f0}
+th.sortable::after{content:"";display:inline-block;width:0;height:0;margin-left:4px;vertical-align:middle}
+th.sortable.asc::after{border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:5px solid #60a5fa}
+th.sortable.desc::after{border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #60a5fa}
+td{padding:10px 12px;border-bottom:1px solid #0f172a;color:#e2e8f0}
+tr:hover td{background:#0f172a}
+.up{color:#ef4444}
+.down{color:#22c55e}
+.flat{color:#94a3b8}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:#0f172a;border-radius:8px;padding:16px;text-align:center}
+.stat .num{font-size:24px;font-weight:700;color:#f8fafc}
+.stat .desc{font-size:11px;color:#64748b;margin-top:4px}
+.mode-group{display:flex;gap:12px;margin-bottom:12px}
+.mode-btn{flex:1;padding:14px;border-radius:8px;border:2px solid #334155;background:#0f172a;color:#94a3b8;font-size:14px;cursor:pointer;text-align:center;transition:all .2s}
+.mode-btn:hover{border-color:#475569;color:#e2e8f0}
+.mode-btn.active{border-color:#3b82f6;background:#1e3a5f;color:#60a5fa;font-weight:600}
+.save-btn{width:100%;padding:12px;border:none;border-radius:8px;background:#3b82f6;color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-top:12px;transition:background .2s}
+.save-btn:hover{background:#2563eb}
+.toast{position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;opacity:0;transition:opacity .3s;z-index:999}
+.toast.show{opacity:1}
+.toast.ok{background:#064e3b;color:#34d399;border:1px solid #065f46}
+.toast.err{background:#450a0a;color:#f87171;border:1px solid #7f1d1d}
+.empty{text-align:center;color:#475569;padding:32px;font-size:14px}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.badge.real{background:#1e3a5f;color:#60a5fa}
+.badge.virtual{background:#3b1f5e;color:#c084fc}
+input[type="text"],input[type="number"]{background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px 12px;border-radius:8px;font-size:13px;width:100%;margin-bottom:8px}
+input:focus{outline:none;border-color:#3b82f6}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+.form-row{display:flex;gap:12px;margin-bottom:12px}
+.form-row input{flex:1}
+.btn{padding:10px 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:#3b82f6;color:#fff}
+.btn-primary:hover{background:#2563eb}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-danger:hover{background:#dc2626}
+.btn-secondary{background:#334155;color:#94a3b8}
+.btn-secondary:hover{background:#475569;color:#e2e8f0}
+.btn-sm{padding:6px 12px;font-size:12px}
+.actions{display:flex;gap:8px;align-items:center}
+.light{width:14px;height:14px;border-radius:50%;cursor:pointer;display:inline-block;border:2px solid #334155;transition:all .2s}
+.light.on{background:#22c55e;border-color:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.5)}
+.light.off{background:#ef4444;border-color:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.3)}
+.edit-input{width:100px!important;padding:6px 8px!important;font-size:12px!important;margin:0!important;border-radius:6px!important}
+.confirm-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000}
+.confirm-box{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;max-width:360px;width:90%}
+.confirm-box h3{font-size:14px;margin-bottom:12px;color:#f8fafc}
+.confirm-box p{font-size:13px;color:#94a3b8;margin-bottom:20px}
+.confirm-actions{display:flex;gap:12px;justify-content:flex-end}
+.search-bar{display:flex;gap:12px;margin-bottom:16px}
+.search-bar input{flex:1;margin-bottom:0}
+</style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+<button class="toggle-btn" onclick="toggleSidebar()"><span class="arrow">&#9664;</span></button>
+<div class="menu-item active" onclick="showSection('dashboard',this)">dashboard</div>
+<div class="menu-item" onclick="showSection('stocks',this)">real stocks</div>
+<div class="menu-item" onclick="showSection('virtual',this)">virtual market</div>
+<div class="menu-item" onclick="showSection('users',this)">users</div>
+<div class="menu-item" onclick="showSection('settings',this)">settings</div>
+</div>
+
+<div class="main">
+
+<div class="section active" id="sec-dashboard">
+<div class="stat-grid">
+<div class="stat"><div class="num" id="stat-stocks">-</div><div class="desc">real stocks</div></div>
+<div class="stat"><div class="num" id="stat-users">-</div><div class="desc">users</div></div>
+<div class="stat"><div class="num" id="stat-holdings">-</div><div class="desc">holdings</div></div>
+<div class="stat"><div class="num" id="stat-orders">-</div><div class="desc">orders</div></div>
+</div>
+<div class="card">
+<h2>bot info</h2>
+<div class="row"><label>bot name</label><span class="val" id="bot-name">-</span></div>
+<div class="row"><label>mode</label><span class="val" id="current-mode">-</span></div>
+<div class="row"><label>web port</label><span class="val" id="web-port">-</span></div>
+</div>
+</div>
+
+<div class="section" id="sec-stocks">
+<div class="card">
+<h2>real stock list</h2>
+<div class="search-bar">
+<input type="text" id="stocks-search" placeholder="search by code or name..." oninput="filterStocks()">
+</div>
+<table>
+<thead><tr><th>code</th><th>name</th><th class="sortable" onclick="sortStocks('price')">price</th><th class="sortable" onclick="sortStocks('change')">change</th><th>high</th><th>low</th></tr></thead>
+<tbody id="stocks-body"></tbody>
+</table>
+</div>
+</div>
+
+<div class="section" id="sec-virtual">
+<div class="card">
+<h2>create virtual stock</h2>
+<div class="form-row">
+<input type="text" id="v-code" placeholder="stock code (e.g. V001)">
+<input type="text" id="v-name" placeholder="stock name">
+<input type="number" id="v-price" placeholder="initial price" step="0.01" min="0.01">
+</div>
+<button class="btn btn-primary" onclick="createVirtual()">create</button>
+</div>
+<div class="card">
+<h2>virtual stock list</h2>
+<div class="search-bar">
+<input type="text" id="virtual-search" placeholder="search by code or name..." oninput="filterVirtual()">
+</div>
+<table>
+<thead><tr><th>status</th><th>code</th><th>name</th><th class="sortable" onclick="sortVirtual('price')">price</th><th>volatility</th><th>actions</th></tr></thead>
+<tbody id="virtual-body"></tbody>
+</table>
+</div>
+</div>
+
+<div class="section" id="sec-users">
+<div class="card">
+<h2>user list</h2>
+<div class="search-bar">
+<input type="text" id="users-search" placeholder="search by id or nickname..." oninput="filterUsers()">
+</div>
+<table>
+<thead><tr><th>id</th><th>nickname</th><th>balance</th><th>holdings</th><th>registered</th></tr></thead>
+<tbody id="users-body"></tbody>
+</table>
+</div>
+<div class="card" id="user-detail-card" style="display:none">
+<h2 id="user-detail-title">user detail</h2>
+<table>
+<thead><tr><th>stock</th><th>qty</th><th>avg cost</th><th>current</th><th>pnl</th></tr></thead>
+<tbody id="user-detail-body"></tbody>
+</table>
+</div>
+</div>
+
+<div class="section" id="sec-settings">
+<div class="card">
+<h2>interaction mode</h2>
+<div class="mode-group">
+<button class="mode-btn" onclick="selectMode('text')" id="btn-text"><b>plain text</b><br><small>no buttons</small></button>
+<button class="mode-btn" onclick="selectMode('button')" id="btn-button"><b>buttons</b><br><small>click to interact</small></button>
+</div>
+</div>
+<div class="card">
+<h2>real stocks</h2>
+<div class="row"><label>enable</label><label class="toggle"><input type="checkbox" id="set-real" onchange="onRealToggle()"><span class="slider"></span></label></div>
+<div class="row" id="real-refresh-row"><label>auto refresh</label><label class="toggle"><input type="checkbox" id="set-real-refresh"><span class="slider"></span></label></div>
+<div class="row" id="real-interval-row"><label>refresh interval (sec)</label><input type="number" id="set-real-interval" value="300" min="10" style="width:100px;margin:0"></div>
+</div>
+<div class="card">
+<h2>virtual stocks</h2>
+<div class="row"><label>enable</label><label class="toggle"><input type="checkbox" id="set-virtual" onchange="onVirtualToggle()"><span class="slider"></span></label></div>
+<div class="row" id="virtual-refresh-row"><label>auto refresh</label><label class="toggle"><input type="checkbox" id="set-virtual-refresh"><span class="slider"></span></label></div>
+<div class="row" id="virtual-interval-row"><label>refresh interval (sec)</label><input type="number" id="set-virtual-interval" value="300" min="10" style="width:100px;margin:0"></div>
+</div>
+<div class="card">
+<h2>web port</h2>
+<div class="form-row">
+<input type="number" id="set-port-input" placeholder="port (e.g. 6662)" min="1" max="65535">
+</div>
+</div>
+<button class="save-btn" onclick="saveSettings()">save</button>
+</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="confirm-container"></div>
+
+<script>
+let selectedMode = 'text';
+let cfg = {};
+let stocksData = [];
+let virtualData = [];
+let usersData = [];
+let stocksSort = {key:null, asc:true};
+let virtualSort = {key:null, asc:true};
+let editingCode = null;
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+
+function showSection(name, el) {
+  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('.menu-item').forEach(function(m) { m.classList.remove('active'); });
+  document.getElementById('sec-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'stocks') loadStocks();
+  if (name === 'virtual') loadVirtual();
+  if (name === 'users') loadUsers();
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'settings') loadConfig();
+}
+
+async function loadConfig() {
+  const r = await fetch('/api/config');
+  cfg = await r.json();
+  selectedMode = cfg.interaction_mode || 'text';
+  document.getElementById('bot-name').textContent = cfg.bot_name || '-';
+  document.getElementById('current-mode').textContent = selectedMode;
+  document.getElementById('web-port').textContent = cfg.web_port || '-';
+  document.getElementById('set-port-input').value = cfg.web_port || '';
+  document.getElementById('set-real').checked = cfg.enable_real_stocks !== false;
+  document.getElementById('set-real-refresh').checked = cfg.enable_real_refresh !== false;
+  document.getElementById('set-real-interval').value = cfg.real_refresh_interval || 300;
+  document.getElementById('set-virtual').checked = cfg.enable_virtual_stocks !== false;
+  document.getElementById('set-virtual-refresh').checked = cfg.enable_virtual_refresh !== false;
+  document.getElementById('set-virtual-interval').value = cfg.virtual_refresh_interval || 300;
+  updateModeBtn();
+  onRealToggle();
+  onVirtualToggle();
+}
+
+async function loadDashboard() {
+  await loadConfig();
+  try {
+    const r = await fetch('/api/stats');
+    const d = await r.json();
+    document.getElementById('stat-stocks').textContent = d.stocks;
+    document.getElementById('stat-users').textContent = d.users;
+    document.getElementById('stat-holdings').textContent = d.holdings;
+    document.getElementById('stat-orders').textContent = d.orders;
+  } catch(e) {}
+}
+
+function filterAndRenderStocks() {
+  var q = document.getElementById('stocks-search').value.trim().toUpperCase();
+  var list = stocksData;
+  if (q) list = list.filter(function(s) { return s.code.toUpperCase().includes(q) || s.name.toUpperCase().includes(q); });
+  if (stocksSort.key) {
+    list = list.slice().sort(function(a, b) {
+      var va = stocksSort.key === 'price' ? a.current_price : a.change_pct;
+      var vb = stocksSort.key === 'price' ? b.current_price : b.change_pct;
+      return stocksSort.asc ? va - vb : vb - va;
+    });
+  }
+  renderStocks(list);
+}
+
+function renderStocks(list) {
+  var tbody = document.getElementById('stocks-body');
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">no data</td></tr>'; return; }
+  tbody.innerHTML = list.map(function(s) {
+    var cls = s.change_pct > 0 ? 'up' : s.change_pct < 0 ? 'down' : 'flat';
+    var sign = s.change_pct > 0 ? '+' : '';
+    
+    return '<tr><td>' + s.code + '</td><td>' + s.name + '</td><td>' + s.current_price.toFixed(2) + '</td><td class="' + cls + '">' + sign + s.change_pct.toFixed(2) + '%</td><td>' + s.high_price.toFixed(2) + '</td><td>' + s.low_price.toFixed(2) + '</td></tr>';
+  }).join('');
+}
+
+function sortStocks(key) {
+  if (stocksSort.key === key) stocksSort.asc = !stocksSort.asc;
+  else { stocksSort.key = key; stocksSort.asc = true; }
+  document.querySelectorAll('#sec-stocks th.sortable').forEach(function(th) { th.classList.remove('asc', 'desc'); });
+  document.querySelectorAll('#sec-stocks th.sortable')[key === 'price' ? 0 : 1].classList.add(stocksSort.asc ? 'asc' : 'desc');
+  filterAndRenderStocks();
+}
+
+function filterStocks() { filterAndRenderStocks(); }
+
+async function loadStocks() {
+  const r = await fetch('/api/stocks/real');
+  stocksData = await r.json();
+  stocksSort = {key:null, asc:true};
+  document.querySelectorAll('#sec-stocks th.sortable').forEach(function(th) { th.classList.remove('asc', 'desc'); });
+  document.getElementById('stocks-search').value = '';
+  filterAndRenderStocks();
+}
+
+function filterAndRenderVirtual() {
+  var q = document.getElementById('virtual-search').value.trim().toUpperCase();
+  var list = virtualData;
+  if (q) list = list.filter(function(s) { return s.code.toUpperCase().includes(q) || s.name.toUpperCase().includes(q); });
+  if (virtualSort.key) {
+    list = list.slice().sort(function(a, b) { return virtualSort.asc ? a.current_price - b.current_price : b.current_price - a.current_price; });
+  }
+  renderVirtual(list);
+}
+
+function renderVirtual(list) {
+  var tbody = document.getElementById('virtual-body');
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">no virtual stocks</td></tr>'; return; }
+  tbody.innerHTML = list.map(function(s) {
+    var light = '<span class="light ' + (s.is_enabled ? 'on' : 'off') + '" onclick="toggleEnabled(\'' + s.code + '\',' + (s.is_enabled ? 0 : 1) + ')"></span>';
+    var vol = (s.volatility !== null && s.volatility !== undefined) ? s.volatility : 3.0;
+    if (editingCode === s.code) {
+      return '<tr><td>' + light + '</td>'
+        + '<td><input type="text" class="edit-input" id="edit-code-' + s.code + '" value="' + s.code + '"></td>'
+        + '<td><input type="text" class="edit-input" id="edit-name-' + s.code + '" value="' + s.name + '"></td>'
+        + '<td><input type="number" class="edit-input" id="edit-price-' + s.code + '" value="' + s.current_price + '" step="0.01"></td>'
+        + '<td><input type="number" class="edit-input" id="edit-vol-' + s.code + '" value="' + vol + '" step="0.1" min="0" max="100"></td>'
+        + '<td class="actions"><button class="btn btn-primary btn-sm" onclick="saveEdit(\'' + s.code + '\')">save</button><button class="btn btn-secondary btn-sm" onclick="cancelEdit()">cancel</button></td></tr>';
+    }
+    return '<tr><td>' + light + '</td><td>' + s.code + '</td><td>' + s.name + '</td><td>' + s.current_price.toFixed(2) + '</td><td>±' + vol.toFixed(1) + '%</td>'
+      + '<td class="actions"><button class="btn btn-secondary btn-sm" onclick="startEdit(\'' + s.code + '\')">edit</button>'
+      + '<button class="btn btn-danger btn-sm" onclick="confirmDelete(\'' + s.code + '\',\'' + s.name + '\')">delete</button></td></tr>';
+  }).join('');
+}
+
+function sortVirtual(key) {
+  if (virtualSort.key === key) virtualSort.asc = !virtualSort.asc;
+  else { virtualSort.key = key; virtualSort.asc = true; }
+  document.querySelectorAll('#sec-virtual th.sortable').forEach(function(th) { th.classList.remove('asc', 'desc'); });
+  document.querySelector('#sec-virtual th.sortable').classList.add(virtualSort.asc ? 'asc' : 'desc');
+  filterAndRenderVirtual();
+}
+
+function filterVirtual() { filterAndRenderVirtual(); }
+
+async function loadVirtual() {
+  const r = await fetch('/api/stocks/virtual');
+  virtualData = await r.json();
+  virtualSort = {key:null, asc:true};
+  editingCode = null;
+  document.querySelectorAll('#sec-virtual th.sortable').forEach(function(th) { th.classList.remove('asc', 'desc'); });
+  document.getElementById('virtual-search').value = '';
+  filterAndRenderVirtual();
+}
+
+async function toggleEnabled(code, val) {
+  try {
+    await fetch('/api/stocks/virtual/' + code, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({is_enabled: val})});
+    showToast(val ? 'enabled' : 'disabled');
+    loadVirtual();
+  } catch(e) { showToast('failed', true); }
+}
+
+function startEdit(code) {
+  editingCode = code;
+  filterAndRenderVirtual();
+}
+
+function cancelEdit() {
+  editingCode = null;
+  filterAndRenderVirtual();
+}
+
+async function saveEdit(oldCode) {
+  var newCode = document.getElementById('edit-code-' + oldCode).value.trim();
+  var name = document.getElementById('edit-name-' + oldCode).value.trim();
+  var price = parseFloat(document.getElementById('edit-price-' + oldCode).value);
+  var vol = parseFloat(document.getElementById('edit-vol-' + oldCode).value);
+  if (!newCode || !name || isNaN(price) || price <= 0) { showToast('invalid input', true); return; }
+  if (isNaN(vol) || vol < 0) vol = 3.0;
+  try {
+    var r = await fetch('/api/stocks/virtual/' + oldCode, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:newCode, name:name, price:price, volatility:vol})});
+    var d = await r.json();
+    if (d.error) { showToast(d.error, true); return; }
+    showToast('updated');
+    editingCode = null;
+    loadVirtual();
+  } catch(e) { showToast('failed', true); }
+}
+
+function confirmDelete(code, name) {
+  var container = document.getElementById('confirm-container');
+  container.innerHTML = '<div class="confirm-overlay" onclick="closeConfirm()"><div class="confirm-box" onclick="event.stopPropagation()"><h3>delete stock</h3><p>are you sure to delete <b>' + name + '</b> (' + code + ')?</p><div class="confirm-actions"><button class="btn btn-secondary" onclick="closeConfirm()">cancel</button><button class="btn btn-danger" onclick="doDelete(\'' + code + '\')">delete</button></div></div></div>';
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-container').innerHTML = '';
+}
+
+async function doDelete(code) {
+  closeConfirm();
+  try {
+    var r = await fetch('/api/stocks/virtual/' + code, {method:'DELETE'});
+    var d = await r.json();
+    if (d.error) { showToast(d.error, true); return; }
+    showToast('deleted');
+    loadVirtual();
+  } catch(e) { showToast('failed', true); }
+}
+
+async function createVirtual() {
+  var code = document.getElementById('v-code').value.trim();
+  var name = document.getElementById('v-name').value.trim();
+  var price = parseFloat(document.getElementById('v-price').value);
+  if (!code || !name || !price) { showToast('fill all fields', true); return; }
+  try {
+    var r = await fetch('/api/stocks/virtual', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:code,name:name,price:price})});
+    var d = await r.json();
+    if (d.error) { showToast(d.error, true); return; }
+    showToast('created');
+    document.getElementById('v-code').value = '';
+    document.getElementById('v-name').value = '';
+    document.getElementById('v-price').value = '';
+    loadVirtual();
+  } catch(e) { showToast('failed', true); }
+}
+
+function filterAndRenderUsers() {
+  var q = document.getElementById('users-search').value.trim().toUpperCase();
+  var list = usersData;
+  if (q) list = list.filter(function(u) { return u.qq_id.toUpperCase().includes(q) || (u.nickname||'').toUpperCase().includes(q); });
+  renderUsers(list);
+}
+
+function renderUsers(list) {
+  var tbody = document.getElementById('users-body');
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">no users</td></tr>'; return; }
+  tbody.innerHTML = list.map(function(u) {
+    return '<tr style="cursor:pointer" onclick="loadUserDetail(\'' + u.qq_id + '\')"><td>' + u.qq_id + '</td><td>' + (u.nickname || '-') + '</td><td>' + u.balance.toFixed(2) + '</td><td>' + u.holding_count + '</td><td>' + (u.created_at || '-') + '</td></tr>';
+  }).join('');
+}
+
+function filterUsers() { filterAndRenderUsers(); }
+
+async function loadUsers() {
+  const r = await fetch('/api/users');
+  usersData = await r.json();
+  document.getElementById('users-search').value = '';
+  filterAndRenderUsers();
+}
+
+async function loadUserDetail(qq_id) {
+  const r = await fetch('/api/users/' + encodeURIComponent(qq_id));
+  const d = await r.json();
+  document.getElementById('user-detail-card').style.display = 'block';
+  document.getElementById('user-detail-title').textContent = 'holdings: ' + (d.user.nickname || d.user.qq_id);
+  const tbody = document.getElementById('user-detail-body');
+  if (!d.holdings.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">no holdings</td></tr>'; return; }
+  tbody.innerHTML = d.holdings.map(function(h) {
+    const pnl = (h.current_price - h.avg_cost) * h.quantity;
+    const cls = pnl > 0 ? 'up' : pnl < 0 ? 'down' : 'flat';
+    const sign = pnl > 0 ? '+' : '';
+    return '<tr><td>' + h.name + '(' + h.stock_code + ')</td><td>' + h.quantity + '</td><td>' + h.avg_cost.toFixed(2) + '</td><td>' + h.current_price.toFixed(2) + '</td><td class="' + cls + '">' + sign + pnl.toFixed(2) + '</td></tr>';
+  }).join('');
+}
+
+function selectMode(m) { selectedMode = m; updateModeBtn(); }
+function updateModeBtn() {
+  document.getElementById('btn-text').classList.toggle('active', selectedMode==='text');
+  document.getElementById('btn-button').classList.toggle('active', selectedMode==='button');
+}
+
+function onRealToggle() {
+  var on = document.getElementById('set-real').checked;
+  var cb = document.getElementById('set-real-refresh');
+  if (on) {
+    cb.checked = true;
+    cb.disabled = true;
+    document.getElementById('real-refresh-row').style.opacity = '0.5';
+  } else {
+    cb.disabled = false;
+    document.getElementById('real-refresh-row').style.opacity = '1';
+  }
+}
+
+function onVirtualToggle() {
+  var on = document.getElementById('set-virtual').checked;
+  document.getElementById('set-virtual-refresh').disabled = !on;
+  document.getElementById('set-virtual-interval').disabled = !on;
+  document.getElementById('virtual-refresh-row').style.opacity = on ? '1' : '0.5';
+  document.getElementById('virtual-interval-row').style.opacity = on ? '1' : '0.5';
+}
+
+async function saveSettings() {
+  var port = parseInt(document.getElementById('set-port-input').value);
+  if (isNaN(port) || port < 1 || port > 65535) { showToast('invalid port', true); return; }
+  var realInterval = parseInt(document.getElementById('set-real-interval').value);
+  var virtualInterval = parseInt(document.getElementById('set-virtual-interval').value);
+  if (isNaN(realInterval) || realInterval < 10) realInterval = 300;
+  if (isNaN(virtualInterval) || virtualInterval < 10) virtualInterval = 300;
+  try {
+    await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+      interaction_mode: selectedMode,
+      web_port: port,
+      enable_real_stocks: document.getElementById('set-real').checked,
+      enable_real_refresh: document.getElementById('set-real-refresh').checked,
+      real_refresh_interval: realInterval,
+      enable_virtual_stocks: document.getElementById('set-virtual').checked,
+      enable_virtual_refresh: document.getElementById('set-virtual-refresh').checked,
+      virtual_refresh_interval: virtualInterval
+    })});
+    showToast('saved, restart to apply changes');
+    await loadConfig();
+  } catch(e) { showToast('failed', true); }
+}
+
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (err ? 'err' : 'ok');
+  setTimeout(function() { t.className = 'toast'; }, 2000);
+}
+
+loadDashboard();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
