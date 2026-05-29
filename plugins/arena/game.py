@@ -249,6 +249,9 @@ class Game:
         rname = self._rainbow_name(pid)
         if not rname: return "no_dice"
         rdata = RAINBOW_DICE[rname]
+        max_round = rdata.get("max_round")
+        if max_round and self.round_num > max_round:
+            return ("too_late", max_round)
         self._use_rainbow(pid)
         opp = self._other(pid)
         if "faces" in rdata:

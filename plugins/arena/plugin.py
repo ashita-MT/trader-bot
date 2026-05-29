@@ -328,6 +328,9 @@ class Plugin(BasePlugin):
         if result == "no_uses":
             await msg.reply(content="曜彩骰使用次数已用完")
             return
+        if isinstance(result, tuple) and result[0] == "too_late":
+            await msg.reply(content="" + rn + " 只能在前" + str(result[1]) + "回合使用")
+            return
         if result == "no_dice":
             await msg.reply(content="你还没有选择曜彩骰")
             return
