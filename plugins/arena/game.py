@@ -85,10 +85,13 @@ class Game:
                 val = random.randint(1, spec["type"])
                 results.append({"value": val, "type": spec["type"], "mingding": False, "label": ""})
         # Add 命定 die if pending
-        faces = self.mingding_pending.get(pid)
-        if faces:
+        rdata = self.mingding_pending.get(pid)
+        if rdata:
+            faces = rdata["faces"]
             val = random.choice(faces)
-            results.append({"value": val, "type": 0, "mingding": True, "label": "命运"})
+            md = rdata.get("mingding", False)
+            label = "命运" if md else ""
+            results.append({"value": val, "type": 0, "mingding": md, "label": label})
             self.mingding_pending[pid] = None
         return results
 
@@ -256,7 +259,7 @@ class Game:
         opp = self._other(pid)
         if "faces" in rdata:
             # 真·命运: add 命定 die to next roll
-            self.mingding_pending[pid] = rdata["faces"]
+            self.mingding_pending[pid] = rdata
             return ("mingding", rname, rdata)
         return "unknown"
 
