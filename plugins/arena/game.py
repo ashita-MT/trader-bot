@@ -1,11 +1,11 @@
-"""Game state machine and battle logic."""
+"""Game state machine and battle logic - v2 with mixed dice, dongchuan, mingding."""
 import random
-from .data import CARDS, RAINBOW_DICE, DICE_NAMES
+from .data import CARDS, RAINBOW_DICE
 
 # In-memory game storage
-_pending = {}   # context_id -> challenger_id
-_games = {}     # game_key -> Game
-_player_idx = {}  # (context_id, player_id) -> game_key
+_pending = {}
+_games = {}
+_player_idx = {}
 
 
 class Game:
@@ -33,16 +33,16 @@ class Game:
         self.attacker = None
         self.defender = None
         self.round_num = 0
-        self.roll_results = []
+        self.roll_results = []  # list of {value, type, mingding, label}
         self.rerolls_used = 0
         self.max_rerolls = 2
         self.atk_value = 0
         self.winner = None
-        # effects: per-player dict
-        self.effects = {p1: {}, p2: {}}
-        # 战士 iron wall flag
-        self.iron_wall = {p1: False, p2: False}
-        # 暗曜 silence flag
+        # 洞穿 permanent bonus per player
+        self.dongchuan_bonus = {p1: 0, p2: 0}
+        # 命定 pending: {pid: faces_list or None}
+        self.mingding_pending = {p1: None, p2: None}
+        # Silence flag
         self.silenced = {p1: False, p2: False}
 
     def _other(self, pid):
@@ -52,54 +52,65 @@ class Game:
         name = self.p1_card if pid == self.p1 else self.p2_card
         return CARDS[name] if name else None
 
+    def _card_name(self, pid):
+        return self.p1_card if pid == self.p1 else self.p2_card
+
     def _hp(self, pid):
         return self.p1_hp if pid == self.p1 else self.p2_hp
 
     def _set_hp(self, pid, val):
-        if pid == self.p1:
-            self.p1_hp = val
-        else:
-            self.p2_hp = val
+        if pid == self.p1: self.p1_hp = val
+        else: self.p2_hp = val
 
     def _rainbow_uses(self, pid):
         return self.p1_rainbow_uses if pid == self.p1 else self.p2_rainbow_uses
 
-    def _use_rainbow_count(self, pid):
-        if pid == self.p1:
-            self.p1_rainbow_uses -= 1
-        else:
-            self.p2_rainbow_uses -= 1
+    def _rainbow_name(self, pid):
+        return self.p1_rainbow if pid == self.p1 else self.p2_rainbow
+
+    def _use_rainbow(self, pid):
+        if pid == self.p1: self.p1_rainbow_uses -= 1
+        else: self.p2_rainbow_uses -= 1
+
+    def _effective_atk(self, pid):
+        card = self._card(pid)
+        return card["atk_level"] + self.dongchuan_bonus[pid]
+
+    def _roll_dice(self, pid):
+        """Roll all dice for a player, including 命定 if pending."""
+        card = self._card(pid)
+        results = []
+        for spec in card["dice"]:
+            for _ in range(spec["count"]):
+                val = random.randint(1, spec["type"])
+                results.append({"value": val, "type": spec["type"], "mingding": False, "label": ""})
+        # Add 命定 die if pending
+        faces = self.mingding_pending.get(pid)
+        if faces:
+            val = random.choice(faces)
+            results.append({"value": val, "type": 0, "mingding": True, "label": "命运"})
+            self.mingding_pending[pid] = None
+        return results
 
     def accept(self):
-        if self.state != self.WAITING:
-            return False
+        if self.state != self.WAITING: return False
         self.state = self.SELECTING
         return True
 
     def select_card(self, pid, card_name):
-        if self.state != self.SELECTING:
-            return "not_selecting"
-        if card_name not in CARDS:
-            return "invalid_card"
-        if pid == self.p1:
-            self.p1_card = card_name
-        elif pid == self.p2:
-            self.p2_card = card_name
-        else:
-            return "not_player"
+        if self.state != self.SELECTING: return "not_selecting"
+        if card_name not in CARDS: return "invalid_card"
+        if pid == self.p1: self.p1_card = card_name
+        elif pid == self.p2: self.p2_card = card_name
+        else: return "not_player"
         return "ok"
 
     def select_rainbow(self, pid, dice_name):
-        if self.state != self.SELECTING:
-            return "not_selecting"
-        if dice_name not in RAINBOW_DICE:
-            return "invalid_dice"
-        if pid == self.p1:
-            self.p1_rainbow = dice_name
-        elif pid == self.p2:
-            self.p2_rainbow = dice_name
-        else:
-            return "not_player"
+        if self.state != self.SELECTING: return "not_selecting"
+        if dice_name not in RAINBOW_DICE: return "invalid_dice"
+        if pid == self.p1: self.p1_rainbow = dice_name
+        elif pid == self.p2: self.p2_rainbow = dice_name
+        else: return "not_player"
         return "ok"
 
     def both_selected(self):
@@ -117,189 +128,153 @@ class Game:
 
     def roll(self, pid):
         if self.state == self.ATK_ROLL and pid == self.attacker:
-            card = self._card(pid)
-            extra = self.effects[pid].get("extra_rerolls", 0)
-            self.max_rerolls = 2 + extra
+            self.max_rerolls = 2
             self.rerolls_used = 0
-            self.roll_results = [random.randint(1, card["dice_type"]) for _ in range(card["dice_count"])]
+            self.roll_results = self._roll_dice(pid)
             self.state = self.ATK_SELECT
             return self.roll_results
         elif self.state == self.DEF_ROLL and pid == self.defender:
             card = self._card(pid)
-            self.roll_results = [random.randint(1, card["dice_type"]) for _ in range(card["dice_count"])]
+            self.max_rerolls = 1 if card["skill"] == "魔导" else 0
             self.rerolls_used = 0
-            # 法师 魔导: defender gets 1 reroll
-            if card["skill"] == "魔导":
-                self.max_rerolls = 1
-            else:
-                self.max_rerolls = 0
+            self.roll_results = self._roll_dice(pid)
             self.state = self.DEF_SELECT
             return self.roll_results
         return None
 
     def reroll(self, pid):
-        if self.state == self.ATK_SELECT and pid == self.attacker:
-            if self.rerolls_used >= self.max_rerolls:
-                return "no_rerolls"
-            card = self._card(pid)
-            self.roll_results = [random.randint(1, card["dice_type"]) for _ in range(card["dice_count"])]
-            self.rerolls_used += 1
-            return self.roll_results
-        elif self.state == self.DEF_SELECT and pid == self.defender:
-            if self.rerolls_used >= self.max_rerolls:
-                return "no_rerolls"
-            card = self._card(pid)
-            self.roll_results = [random.randint(1, card["dice_type"]) for _ in range(card["dice_count"])]
-            self.rerolls_used += 1
-            return self.roll_results
-        return None
+        can = False
+        if self.state == self.ATK_SELECT and pid == self.attacker: can = True
+        elif self.state == self.DEF_SELECT and pid == self.defender: can = True
+        if not can: return None
+        if self.rerolls_used >= self.max_rerolls: return "no_rerolls"
+        self.roll_results = self._roll_dice(pid)
+        self.rerolls_used += 1
+        return self.roll_results
+
+    def _mingding_indices(self):
+        """Return set of indices that are 命定."""
+        return {i for i, r in enumerate(self.roll_results) if r["mingding"]}
 
     def select_dice(self, pid, indices):
-        """Select dice by 1-based indices. Returns (values, sum, extra_info) or error string."""
+        """Select dice by 1-based indices."""
+        mi = self._mingding_indices()
         if self.state == self.ATK_SELECT and pid == self.attacker:
-            card = self._card(pid)
-            n = card["atk_level"]
-            if len(indices) != n:
-                return ("wrong_count", n)
-            if any(i < 1 or i > len(self.roll_results) for i in indices):
+            n = self._effective_atk(pid)
+            # 命定 dice are auto-included, player picks the rest
+            mingding_count = len(mi)
+            need_pick = max(0, n - mingding_count)
+            # Filter out 命定 from player selection
+            player_indices = [i for i in indices if (i-1) not in mi]
+            if len(player_indices) != need_pick:
+                return ("wrong_count", need_pick, mingding_count)
+            all_indices = set(indices) | {(i+1) for i in mi}
+            if any(i < 1 or i > len(self.roll_results) for i in all_indices):
                 return ("invalid_index",)
-            if len(set(indices)) != len(indices):
+            if len(all_indices) != len(set(all_indices)):
                 return ("duplicate",)
-            values = sorted([self.roll_results[i-1] for i in indices], reverse=True)
-            base = sum(values)
+            values = [self.roll_results[i-1]["value"] for i in sorted(all_indices)]
+            total = sum(values)
+            # Check 洞穿: all selected == 4
+            dongchuan = all(v == 4 for v in values)
+            if dongchuan:
+                self._pending_dongchuan = True
             bonus = 0
-            # 铁壁
-            if self.iron_wall[pid]:
-                bonus += 2
-                self.iron_wall[pid] = False
-            # 炎曜骰
-            bonus += self.effects[pid].get("atk_bonus", 0)
-            self.effects[pid]["atk_bonus"] = 0
-            # 冰曜骰 (set by defender)
-            reduction = self.effects[self._other(pid)].get("atk_reduction", 0)
-            self.effects[self._other(pid)]["atk_reduction"] = 0
-            self.atk_value = max(0, base + bonus - reduction)
+            if dongchuan:
+                self.dongchuan_bonus[pid] += 1
+            self.atk_value = total
             self.state = self.DEF_ROLL
-            return ("ok", values, base, bonus, reduction, self.atk_value)
+            return ("ok_atk", values, total, dongchuan)
         elif self.state == self.DEF_SELECT and pid == self.defender:
             card = self._card(pid)
             n = card["def_level"]
-            # 穿透: attacker reduces def selection by 1
             atk_card = self._card(self.attacker)
             if atk_card["skill"] == "穿透":
                 n = max(1, n - 1)
-            if len(indices) != n:
-                return ("wrong_count", n)
-            if any(i < 1 or i > len(self.roll_results) for i in indices):
+            mingding_count = len(mi)
+            need_pick = max(0, n - mingding_count)
+            player_indices = [i for i in indices if (i-1) not in mi]
+            if len(player_indices) != need_pick:
+                return ("wrong_count", need_pick, mingding_count)
+            all_indices = set(indices) | {(i+1) for i in mi}
+            if any(i < 1 or i > len(self.roll_results) for i in all_indices):
                 return ("invalid_index",)
-            if len(set(indices)) != len(indices):
-                return ("duplicate",)
-            values = sorted([self.roll_results[i-1] for i in indices], reverse=True)
+            values = [self.roll_results[i-1]["value"] for i in sorted(all_indices)]
             def_sum = sum(values)
-            return self._resolve_combat(pid, values, def_sum)
+            return self._resolve(pid, values, def_sum)
         return None
 
-    def _resolve_combat(self, def_pid, def_values, def_sum):
-        damage = max(0, self.atk_value - def_sum)
-        def_card = self._card(def_pid)
+    def _resolve(self, def_pid, def_values, def_sum):
         atk_card = self._card(self.attacker)
-        # 骑士 坚守
-        if def_card["skill"] == "坚守":
-            damage = max(0, damage - 2)
-        # 刺客 暗影
-        if atk_card["skill"] == "暗影" and self.atk_value > 12:
+        def_card = self._card(def_pid)
+        # Check if attacker has 洞穿 from this attack
+        # 洞穿 is checked in select_dice, stored temporarily
+        has_dongchuan = getattr(self, "_pending_dongchuan", False)
+        self._pending_dongchuan = False
+        if has_dongchuan:
+            damage = self.atk_value
+        else:
+            damage = max(0, self.atk_value - def_sum)
+            if def_card["skill"] == "坚守":
+                damage = max(0, damage - 2)
+        if atk_card["skill"] == "暗影" and self.atk_value > 12 and not has_dongchuan:
             damage *= 2
         old_hp = self._hp(def_pid)
         new_hp = max(0, old_hp - damage)
         self._set_hp(def_pid, new_hp)
-        # 铁壁: set flag for defender
-        if def_card["skill"] == "铁壁":
-            self.iron_wall[def_pid] = True
         game_over = new_hp <= 0
         if game_over:
             self.state = self.FINISHED
             self.winner = self.attacker
-        # 牧师 圣光 heal
+        # 圣光 heal
         heal_info = []
         for pid in [self.p1, self.p2]:
             c = self._card(pid)
             if c["skill"] == "圣光":
-                max_hp = CARDS[self.p1_card if pid == self.p1 else self.p2_card]["hp"]
+                mx = CARDS[self._card_name(pid)]["hp"]
                 cur = self._hp(pid)
-                if cur > 0 and cur < max_hp:
-                    healed = min(3, max_hp - cur)
-                    self._set_hp(pid, cur + healed)
-                    heal_info.append((pid, healed))
+                if cur > 0 and cur < mx:
+                    h = min(3, mx - cur)
+                    self._set_hp(pid, cur + h)
+                    heal_info.append((pid, h))
         if not game_over:
             self.attacker, self.defender = self.defender, self.attacker
             self.round_num += 1
-            self.effects = {self.p1: {}, self.p2: {}}
             self.state = self.ATK_ROLL
-        return ("ok", def_values, def_sum, damage, old_hp, new_hp, game_over, heal_info)
+        return ("ok_def", def_values, def_sum, damage, old_hp, new_hp, game_over, heal_info, has_dongchuan)
 
     def use_rainbow(self, pid):
-        if self.silenced[pid]:
-            return "silenced"
-        uses = self._rainbow_uses(pid)
-        if uses <= 0:
-            return "no_uses"
-        rname = self.p1_rainbow if pid == self.p1 else self.p2_rainbow
-        if not rname:
-            return "no_dice"
-        self._use_rainbow_count(pid)
+        if self.silenced[pid]: return "silenced"
+        if self._rainbow_uses(pid) <= 0: return "no_uses"
+        rname = self._rainbow_name(pid)
+        if not rname: return "no_dice"
+        rdata = RAINBOW_DICE[rname]
+        self._use_rainbow(pid)
         opp = self._other(pid)
-        if rname == "炎曜骰":
-            self.effects[pid]["atk_bonus"] = self.effects[pid].get("atk_bonus", 0) + 3
-            return ("fire",)
-        elif rname == "冰曜骰":
-            self.effects[opp]["atk_reduction"] = self.effects[opp].get("atk_reduction", 0) + 3
-            return ("ice",)
-        elif rname == "雷曜骰":
-            old = self._hp(opp)
-            new_hp = max(0, old - 5)
-            self._set_hp(opp, new_hp)
-            if new_hp <= 0:
-                self.state = self.FINISHED
-                self.winner = pid
-                return ("thunder", old, new_hp, True)
-            return ("thunder", old, new_hp, False)
-        elif rname == "风曜骰":
-            self.effects[pid]["extra_rerolls"] = self.effects[pid].get("extra_rerolls", 0) + 1
-            return ("wind",)
-        elif rname == "光曜骰":
-            max_hp = CARDS[self.p1_card if pid == self.p1 else self.p2_card]["hp"]
-            cur = self._hp(pid)
-            healed = min(5, max_hp - cur)
-            self._set_hp(pid, min(max_hp, cur + healed))
-            return ("light", cur, cur + healed)
-        elif rname == "暗曜骰":
-            self.silenced[opp] = True
-            return ("dark",)
+        if "faces" in rdata:
+            # 真·命运: add 命定 die to next roll
+            self.mingding_pending[pid] = rdata["faces"]
+            return ("mingding", rname, rdata)
         return "unknown"
 
     def surrender(self, pid):
         self.state = self.FINISHED
         self.winner = self._other(pid)
-        return True
 
 
 # === Public API ===
-
 def create_challenge(challenger, ctx):
     _pending[ctx] = challenger
-    return True
 
 def get_pending(ctx):
     return _pending.get(ctx)
 
 def accept_challenge(acceptor, ctx):
     challenger = _pending.pop(ctx, None)
-    if not challenger or challenger == acceptor:
-        return None
-    gk = _game_key(challenger, acceptor, ctx)
+    if not challenger or challenger == acceptor: return None
+    gk = (ctx, min(challenger, acceptor), max(challenger, acceptor))
     g = Game(challenger, acceptor, ctx)
     g.accept()
-    g.state = Game.SELECTING
     _games[gk] = g
     _player_idx[(ctx, challenger)] = gk
     _player_idx[(ctx, acceptor)] = gk
@@ -307,9 +282,7 @@ def accept_challenge(acceptor, ctx):
 
 def get_game(pid, ctx):
     gk = _player_idx.get((ctx, pid))
-    if gk:
-        return _games.get(gk)
-    return None
+    return _games.get(gk) if gk else None
 
 def remove_game(game):
     gk = _player_idx.get((game.ctx, game.p1))

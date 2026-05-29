@@ -1,0 +1,25 @@
+{
+  "黄泉": {
+    "name": "黄泉",
+    "emoji": "💀",
+    "hp": 33,
+    "atk_level": 2,
+    "def_level": 3,
+    "dice": [
+      {
+        "type": 4,
+        "count": 3
+      },
+      {
+        "type": 6,
+        "count": 1
+      },
+      {
+        "type": 8,
+        "count": 1
+      }
+    ],
+    "skill": "洞穿",
+    "skill_desc": "攻击时选定骰子全为4触发洞穿(无视防御)，每次触发攻击等级+1"
+  }
+}
