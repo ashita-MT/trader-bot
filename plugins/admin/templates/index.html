@@ -1,0 +1,454 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bot Admin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex}
+.sidebar{width:200px;background:#1e293b;border-right:1px solid #334155;padding:16px;flex-shrink:0;transition:width .3s,padding .3s;overflow:hidden}
+.sidebar.collapsed{width:36px;padding:8px}
+.toggle-btn{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;background:transparent;color:#64748b;font-size:12px;cursor:pointer;margin-bottom:12px;transition:color .2s;padding:0}
+.toggle-btn:hover{color:#e2e8f0}
+.toggle-btn .arrow{transition:transform .3s;display:inline-block;line-height:1}
+.sidebar.collapsed .toggle-btn .arrow{transform:rotate(180deg)}
+.menu-item{padding:10px 12px;border-radius:8px;cursor:pointer;color:#94a3b8;font-size:14px;margin-bottom:4px;transition:all .2s;white-space:nowrap;overflow:hidden}
+.menu-item:hover{background:#334155;color:#e2e8f0}
+.menu-item.active{background:#1e3a5f;color:#60a5fa}
+.sidebar.collapsed .menu-item{padding:10px 6px;font-size:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+.sidebar.collapsed .menu-item::first-letter{font-size:14px}
+.main{flex:1;padding:24px 32px;overflow-y:auto}
+.section{display:none}.section.active{display:block}
+.card{background:#1e293b;border-radius:12px;padding:24px;margin-bottom:20px;border:1px solid #334155}
+.card h2{font-size:12px;font-weight:600;margin-bottom:16px;color:#64748b;letter-spacing:1px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #0f172a}
+.row:last-child{border:none}
+.row label{color:#94a3b8;font-size:13px}
+.row .val{color:#f8fafc;font-weight:500;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:#64748b;font-weight:500;padding:10px 12px;border-bottom:1px solid #334155;font-size:11px;letter-spacing:.5px}
+td{padding:10px 12px;border-bottom:1px solid #0f172a;color:#e2e8f0}
+tr:hover td{background:#0f172a}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:#0f172a;border-radius:8px;padding:16px;text-align:center}
+.stat .num{font-size:24px;font-weight:700;color:#f8fafc}
+.stat .desc{font-size:11px;color:#64748b;margin-top:4px}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.badge.green{background:#064e3b;color:#34d399}
+.badge.blue{background:#1e3a5f;color:#60a5fa}
+.badge.purple{background:#3b1f5e;color:#c084fc}
+.badge.gray{background:#334155;color:#94a3b8}
+.toast{position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;opacity:0;transition:opacity .3s;z-index:999}
+.toast.show{opacity:1}
+.toast.ok{background:#064e3b;color:#34d399;border:1px solid #065f46}
+.toast.err{background:#450a0a;color:#f87171;border:1px solid #7f1d1d}
+.empty{text-align:center;color:#475569;padding:32px;font-size:14px}
+input[type="text"],input[type="number"]{background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px 12px;border-radius:8px;font-size:13px;width:100%;margin-bottom:8px}
+input:focus{outline:none;border-color:#3b82f6}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+.form-row{display:flex;gap:12px;margin-bottom:12px}
+.form-row label{min-width:120px;line-height:40px;font-size:13px;color:#94a3b8}
+.form-row input,.form-row select{flex:1}
+.form-row select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px 12px;border-radius:8px;font-size:13px}
+.btn{padding:10px 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:#3b82f6;color:#fff}
+.btn-primary:hover{background:#2563eb}
+.btn-sm{padding:6px 12px;font-size:12px}
+.plugin-card{background:#0f172a;border-radius:8px;padding:16px;margin-bottom:12px;border:1px solid #334155}
+.plugin-card h3{font-size:14px;color:#f8fafc;margin-bottom:4px;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+.plugin-card h3::after{content:"▼";font-size:10px;color:#64748b;transition:transform .2s}
+.plugin-card.collapsed h3::after{transform:rotate(-90deg)}
+.plugin-card .plugin-body{overflow:hidden;transition:max-height .3s ease,opacity .2s;max-height:2000px;opacity:1}
+.plugin-card.collapsed .plugin-body{max-height:0;opacity:0}
+.plugin-card p{font-size:12px;color:#64748b;margin-bottom:12px}
+.plugin-card.plugin-disabled{opacity:0.5}
+.plugin-toggle{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #334155}
+.plugin-toggle-label{font-size:13px;color:#e2e8f0;font-weight:500}
+.config-divider{margin-bottom:12px}
+.plugin-card .config-row{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.plugin-card .config-row label{min-width:160px;font-size:12px;color:#94a3b8}
+.plugin-card .config-row input,.plugin-card .config-row select{flex:1;padding:8px 10px;font-size:12px}
+.switch{display:inline-flex;align-items:center;cursor:pointer;flex:0 0 auto;gap:6px}
+.switch input{display:none}
+.switch .slider{width:18px;height:18px;border-radius:50%;background:#ef4444;transition:background .2s,box-shadow .2s;flex-shrink:0}
+.switch input:checked+.slider{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,0.5)}
+.switch .label-off,.switch .label-on{font-size:11px;font-weight:500}
+.switch .label-on{display:none}
+.switch input:checked~.label-on{display:inline}
+.switch input:checked~.label-off{display:none}
+.log-time{color:#64748b;font-size:12px}
+.log-cmd{color:#60a5fa;font-weight:500}
+.log-ctx{color:#94a3b8;font-size:12px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-header h1{font-size:18px;font-weight:600;color:#f8fafc}
+.chart-bar{display:flex;align-items:flex-end;gap:4px;height:120px;padding-top:8px}
+.chart-bar .bar{flex:1;background:#3b82f6;border-radius:4px 4px 0 0;min-height:2px;transition:height .3s}
+.chart-bar .bar:hover{background:#60a5fa}
+.chart-labels{display:flex;gap:4px;margin-top:4px}
+.chart-labels span{flex:1;text-align:center;font-size:9px;color:#64748b}
+</style>
+</head>
+<body>
+<div class="sidebar" id="sidebar">
+<button class="toggle-btn" onclick="toggleSidebar()"><span class="arrow">&#9664;</span></button>
+<div class="menu-item active" onclick="showSection('dashboard',this)">总览</div>
+<div class="menu-item" onclick="showSection('commands',this)">指令统计</div>
+<div class="menu-item" onclick="showSection('groups',this)">群聊信息</div>
+<div class="menu-item" onclick="showSection('plugins',this)">插件管理</div>
+<div class="menu-item" onclick="showSection('rules',this)">指令配置</div>
+<div class="menu-item" onclick="showSection('settings',this)">系统设置</div>
+</div>
+<div class="main">
+
+<!-- Dashboard -->
+<div class="section active" id="sec-dashboard">
+<div class="stat-grid">
+<div class="stat"><div class="num" id="d-today">-</div><div class="desc">今日指令</div></div>
+<div class="stat"><div class="num" id="d-all">-</div><div class="desc">总指令数</div></div>
+<div class="stat"><div class="num" id="d-groups">-</div><div class="desc">活跃群聊</div></div>
+<div class="stat"><div class="num" id="d-users">-</div><div class="desc">活跃用户</div></div>
+</div>
+<div class="card">
+<h2>Bot 信息</h2>
+<div class="row"><label>名称</label><span class="val" id="b-name">-</span></div>
+<div class="row"><label>模式</label><span class="val" id="b-mode">-</span></div>
+<div class="row"><label>管理面板端口</label><span class="val" id="b-port">-</span></div>
+<div class="row"><label>运行时间</label><span class="val" id="b-uptime">-</span></div>
+<div class="row"><label>启动时间</label><span class="val" id="b-start">-</span></div>
+</div>
+<div class="card">
+<h2>今日指令趋势（24h）</h2>
+<div class="chart-bar" id="chart-hours"></div>
+<div class="chart-labels" id="chart-labels"></div>
+</div>
+<div class="card">
+<h2>最近指令</h2>
+<table><thead><tr><th>时间</th><th>指令</th><th>插件</th><th>用户</th><th>来源</th></tr></thead>
+<tbody id="recent-body"></tbody></table>
+</div>
+</div>
+
+<!-- Commands -->
+<div class="section" id="sec-commands">
+<div class="section-header"><h1>指令统计</h1></div>
+<div class="card">
+<h2>全部指令排行</h2>
+<table><thead><tr><th>指令</th><th>总次数</th><th>今日次数</th><th>占比</th></tr></thead>
+<tbody id="cmd-all-body"></tbody></table>
+</div>
+<div class="card">
+<h2>插件指令分布</h2>
+<table><thead><tr><th>插件</th><th>指令次数</th><th>占比</th></tr></thead>
+<tbody id="cmd-plugin-body"></tbody></table>
+</div>
+</div>
+
+<!-- Groups -->
+<div class="section" id="sec-groups">
+<div class="section-header"><h1>群聊信息</h1></div>
+<div class="card">
+<h2>群聊 / 来源统计</h2>
+<table><thead><tr><th colspan="6" style="border:none;padding:4px 12px;color:#64748b;font-size:11px">点击行展开聊天记录</th></tr><tr><th>来源 ID</th><th>类型</th><th>指令</th><th>聊天</th><th>用户</th><th>最近</th></tr></thead>
+<tbody id="group-body"></tbody></table>
+</div>
+</div>
+
+<!-- Plugins -->
+<div class="section" id="sec-plugins">
+<div class="section-header"><h1>插件管理</h1></div>
+<div id="plugin-list"></div>
+</div>
+
+<!-- Command Rules -->
+<div class="section" id="sec-rules">
+<div class="section-header"><h1>指令配置</h1></div>
+<div class="card">
+<h2>添加规则</h2>
+<div class="form-row"><label>适用范围</label><select id="r-scope"><option value="*">全局</option></select></div>
+<div class="form-row"><label>类型</label><select id="r-type" onchange="onRuleTypeChange()"><option value="command">指令</option><option value="plugin">插件</option></select></div>
+<div class="form-row"><label>目标</label><select id="r-target"></select></div>
+<div class="form-row"><label>模式</label><select id="r-mode"><option value="blacklist">黑名单（禁止）</option><option value="whitelist">白名单（仅允许）</option></select></div>
+<button class="btn btn-primary" onclick="addRule()">添加规则</button>
+</div>
+<div class="card">
+<h2>现有规则</h2>
+<table><thead><tr><th>范围</th><th>类型</th><th>目标</th><th>模式</th><th>操作</th></tr></thead>
+<tbody id="rules-body"></tbody></table>
+<div class="empty" id="rules-empty" style="display:none">暂无规则</div>
+</div>
+</div>
+
+
+<!-- Settings -->
+<div class="section" id="sec-settings">
+<div class="section-header"><h1>系统设置</h1></div>
+<div class="card">
+<h2>Bot 基础设置</h2>
+<div class="form-row"><label>Bot 名称</label><input type="text" id="s-botname"></div>
+<div class="form-row"><label>管理面板端口</label><input type="number" id="s-port" min="1" max="65535"></div>
+<div class="form-row"><label>交互模式</label><select id="s-mode"><option value="text">text</option><option value="button">button</option></select></div>
+<button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
+</div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('collapsed')}
+function showSection(id,el){document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active'));document.getElementById('sec-'+id).classList.add('active');if(el)el.classList.add('active');loadSection(id)}
+function onConfigDep(key, parentKey, checked){
+  var card=event.target.closest('.plugin-card');
+  var dep=card.querySelector('[data-dep="'+parentKey+'"]');
+  if(!dep)return;
+  var parent=card.querySelector('[data-key="'+parentKey+'"]');
+  if(parent&&parent.type==='checkbox'){
+    dep.disabled=!parent.checked;
+    if(!parent.checked)dep.checked=false;
+  }
+}
+function initDeps(){
+  document.querySelectorAll('.config-row [data-dep]').forEach(function(dep){
+    var card=dep.closest('.plugin-card');
+    var pk=dep.dataset.dep;
+    var parent=card.querySelector('[data-key="'+pk+'"]');
+    if(parent&&parent.type==='checkbox'){
+      dep.disabled=!parent.checked;
+      if(!parent.checked)dep.checked=false;
+    }
+  });
+}
+function showToast(m,e){var t=document.getElementById('toast');t.textContent=m;t.className='toast show '+(e?'err':'ok');setTimeout(function(){t.className='toast'},2000)}
+function fmtTime(ts){if(!ts)return'-';var d=new Date(ts*1000);return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}
+function fmtTs(ts){var d=new Date(ts*1000);return d.toLocaleString('zh-CN',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+
+var _statsCache=null,_todayCache=null;
+
+async function loadDashboard(){
+  const[s,c]=await Promise.all([fetch('/api/stats').then(r=>r.json()),fetch('/api/config').then(r=>r.json())]);
+  _statsCache=s;_todayCache=s.today;
+  document.getElementById('d-today').textContent=s.today.total;
+  document.getElementById('d-all').textContent=s.all.total;
+  var groups=s.all.by_context.filter(x=>x.context_type==='group');
+  document.getElementById('d-groups').textContent=groups.length;
+  var users=new Set();s.all.by_context.forEach(x=>{});
+  document.getElementById('d-users').textContent='—';
+  document.getElementById('b-name').textContent=c.bot_name||'-';
+  document.getElementById('b-mode').textContent=c.interaction_mode||'-';
+  document.getElementById('b-port').textContent=c.web_port||'-';
+  const bot=await fetch('/api/bot').then(r=>r.json());
+  document.getElementById('b-uptime').textContent=bot.uptime;
+  document.getElementById('b-start').textContent=bot.start_time;
+  renderChart(s.today.by_hour);
+  const recent=await fetch('/api/stats/recent?limit=20').then(r=>r.json());
+  renderRecent(recent);
+}
+
+function renderChart(data){
+  var bars=document.getElementById('chart-hours');var labels=document.getElementById('chart-labels');
+  bars.innerHTML='';labels.innerHTML='';
+  var now=Math.floor(Date.now()/1000/3600);var map={};
+  data.forEach(function(d){map[d.hour_key]=d.cnt});
+  var max=1;for(var h=now-23;h<=now;h++){var v=map[h]||0;if(v>max)max=v}
+  for(var h=now-23;h<=now;h++){
+    var v=map[h]||0;var pct=v/max*100;
+    bars.innerHTML+='<div class="bar" style="height:'+pct+'%" title="'+v+'"></div>';
+    var hr=h%24;labels.innerHTML+='<span>'+(hr<10?'0':'')+hr+'</span>';
+  }
+}
+
+function renderRecent(rows){
+  var tb=document.getElementById('recent-body');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="5" class="empty">暂无数据</td></tr>';return}
+  tb.innerHTML=rows.map(function(r){
+    return '<tr><td class="log-time">'+fmtTs(r.ts)+'</td><td class="log-cmd">'+r.command+'</td><td><span class="badge blue">'+r.plugin+'</span></td><td class="log-ctx">'+r.user_id+'</td><td class="log-ctx">'+r.context+'</td></tr>';
+  }).join('');
+  initDeps();
+}
+
+async function loadCommands(){
+  if(!_statsCache)_statsCache=await fetch('/api/stats').then(r=>r.json());
+  var s=_statsCache;
+  var todayMap={};s.today.by_command.forEach(function(r){todayMap[r.command]=r.cnt});
+  var tb=document.getElementById('cmd-all-body');
+  if(!s.all.by_command.length){tb.innerHTML='<tr><td colspan="4" class="empty">暂无数据</td></tr>';return}
+  tb.innerHTML=s.all.by_command.map(function(r){
+    var today=todayMap[r.command]||0;
+    var pct=s.all.total?((r.cnt/s.all.total)*100).toFixed(1):0;
+    return '<tr><td class="log-cmd">'+r.command+'</td><td>'+r.cnt+'</td><td>'+today+'</td><td>'+pct+'%</td></tr>';
+  }).join('');
+  var ptb=document.getElementById('cmd-plugin-body');
+  if(!s.all.by_plugin.length){ptb.innerHTML='<tr><td colspan="3" class="empty">暂无数据</td></tr>';return}
+  ptb.innerHTML=s.all.by_plugin.map(function(r){
+    var pct=s.all.total?((r.cnt/s.all.total)*100).toFixed(1):0;
+    return '<tr><td><span class="badge purple">'+r.plugin+'</span></td><td>'+r.cnt+'</td><td>'+pct+'%</td></tr>';
+  }).join('');
+}
+
+async function loadGroups(){
+  var data=await fetch('/api/groups').then(r=>r.json());
+  var tb=document.getElementById('group-body');
+  if(!data.length){tb.innerHTML='<tr><td colspan="6" class="empty">\u6682\u65e0\u7fa4\u804a\u6570\u636e</td></tr>';return}
+  tb.innerHTML=data.map(function(g){
+    var label=g.context_type==='group'?'\u7fa4: '+g.context.substring(0,12)+'...':g.context_type==='channel'?'\u9891\u9053: '+g.context:g.context;
+    return '<tr><td>'+label+'</td><td><span class="badge gray">'+g.context_type+'</span></td><td>'+g.total+'</td><td>'+g.users+'</td><td class="log-time">'+fmtTime(g.first_seen)+'</td><td class="log-time">'+fmtTime(g.last_seen)+'</td></tr>';
+  }).join('');
+}
+
+
+
+async function loadPlugins(){
+  var data=await fetch('/api/plugins').then(r=>r.json());
+  var el=document.getElementById('plugin-list');
+  if(!data.length){el.innerHTML='<div class="empty">暂无已注册插件</div>';return}
+  el.innerHTML=data.map(function(p){
+    var cfgHtml='';
+    var keys=Object.keys(p.config_schema);
+    var enabledKey='enable_'+p.name;
+    var isEnabled=p.config[enabledKey]!==undefined?p.config[enabledKey]:true;
+    cfgHtml='<div class="plugin-toggle"><label class="switch"><input type="checkbox" data-key="'+enabledKey+'" '+(isEnabled?'checked':'')+'><span class="slider"></span><span class="label-on">ON</span><span class="label-off">OFF</span></label><span class="plugin-toggle-label">插件开关</span></div>';
+    keys=keys.filter(function(k){return k!=='_enabled'});
+    if(keys.length){
+      cfgHtml+='<div class="config-divider"></div>';
+      cfgHtml+=keys.map(function(k){
+        var s=p.config_schema[k];var val=p.config[k];
+        if(s.type==='boolean'){
+          var depAttr='';var depFn='';
+if(s.depends_on){depAttr=' data-dep="'+s.depends_on+'"';depFn=' onchange="onConfigDep(\''+k+'\',\''+s.depends_on+'\',this.checked)"';}
+return '<div class="config-row"><label>'+s.label+'</label><label class="switch"><input type="checkbox" data-key="'+k+'"'+depAttr+depFn+(val?' checked':'')+'><span class="slider"></span><span class="label-on">ON</span><span class="label-off">OFF</span></label></div>';
+        }else if(s.type==='select'){
+          var opts=s.options.map(function(o){return '<option value="'+o+'"'+(val==o?' selected':'')+'>'+o+'</option>'}).join('');
+          return '<div class="config-row"><label>'+s.label+'</label><select data-key="'+k+'">'+opts+'</select></div>';
+        }else{
+          return '<div class="config-row"><label>'+s.label+'</label><input type="'+(s.type==='number'?'number':'text')+'" data-key="'+k+'" value="'+(val||'')+'"></div>';
+        }
+      }).join('');
+    }
+    return '<div class="plugin-card'+(isEnabled?'':' plugin-disabled')+'"><h3 onclick="this.parentElement.classList.toggle(\'collapsed\')">'+p.name+'</h3><div class="plugin-body"><p>'+p.description+'</p>'+cfgHtml+'<button class="btn btn-primary btn-sm" onclick="savePluginConfig(\''+p.name+'\')">保存配置</button></div></div>';
+  }).join('');
+}
+
+async function savePluginConfig(name){
+  var card=event.target.closest('.plugin-card');
+  var inputs=card.querySelectorAll('[data-key]');
+  var body={};
+  inputs.forEach(function(inp){
+    var k=inp.dataset.key;
+    if(inp.type==='checkbox')body[k]=inp.checked;
+    else if(inp.type==='number')body[k]=parseInt(inp.value)||0;
+    else body[k]=inp.value;
+  });
+  try{
+    await fetch('/api/plugins/'+encodeURIComponent(name)+'/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    showToast('配置已保存');
+  }catch(e){showToast('保存失败',true)}
+}
+
+async function loadSettings(){
+  var c=await fetch('/api/config').then(r=>r.json());
+  document.getElementById('s-botname').value=c.bot_name||'';
+  document.getElementById('s-port').value=c.web_port||6662;
+  document.getElementById('s-mode').value=c.interaction_mode||'text';
+}
+
+async function saveSettings(){
+  try{
+    await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      bot_name:document.getElementById('s-botname').value,
+      web_port:parseInt(document.getElementById('s-port').value)||6662,
+      interaction_mode:document.getElementById('s-mode').value
+    })});
+    showToast('设置已保存');
+  }catch(e){showToast('保存失败',true)}
+}
+
+var _sectionLoaded={};
+function loadSection(id){
+  if(_sectionLoaded[id])return;_sectionLoaded[id]=true;
+  if(id==='commands')loadCommands();
+  if(id==='groups')loadGroups();
+  if(id==='plugins')loadPlugins();
+  if(id==='rules')loadRules();
+  if(id==='settings')loadSettings();
+}
+
+
+var _allCommands=[],_allPlugins=[],_allCommandObjs=[],_groupMap={};
+async function loadRules(){
+  // Load scope options from groups API
+  var groups=await fetch('/api/groups').then(r=>r.json());
+  var sel=document.getElementById('r-scope');
+  sel.innerHTML='<option value="*">全局</option>';
+  groups.forEach(function(g){
+    _groupMap[g.context]={type:g.context_type,total:g.total};
+    var label=g.context_type==='group'?'\u7fa4: '+g.context.substring(0,8)+'...':g.context_type==='channel'?'\u9891\u9053: '+g.context:g.context;
+    sel.innerHTML+='<option value="'+g.context+'" data-ctx-type="'+g.context_type+'">'+label+' ('+g.context_type+', '+g.total+'\u6b21)</option>';
+});
+  // Load commands from registry
+  var cmds=await fetch('/api/commands').then(r=>r.json());
+  _allCommandObjs=cmds;_allCommands=cmds.map(function(c){return c.name});
+  // Load plugins from registry
+  _allPlugins=await fetch('/api/plugins').then(r=>r.json()).then(function(ps){return ps.map(function(p){return p.name})});
+  onRuleTypeChange();
+  renderRules();
+}
+
+function onRuleTypeChange(){
+  var type=document.getElementById('r-type').value;
+  var sel=document.getElementById('r-target');
+  sel.innerHTML='';
+  if(type==='plugin'){
+    _allPlugins.forEach(function(i){sel.innerHTML+='<option value="'+i+'">'+i+'</option>'});
+  }else{
+    _allCommandObjs.forEach(function(c){sel.innerHTML+='<option value="'+c.name+'">'+c.plugin+'-'+c.name+'</option>'});
+  }
+}
+
+async function addRule(){
+  var scopeEl=document.getElementById('r-scope');
+  var selOpt=scopeEl.options[scopeEl.selectedIndex];
+  var body={
+    context:scopeEl.value,
+    context_type:selOpt.dataset.ctxType||'*',
+    target:document.getElementById('r-target').value,
+    target_type:document.getElementById('r-type').value,
+    mode:document.getElementById('r-mode').value
+  };
+  if(!body.target){showToast('请选择目标',true);return}
+  try{
+    await fetch('/api/rules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    showToast('规则已添加');
+    renderRules();
+  }catch(e){showToast('添加失败',true)}
+}
+
+async function deleteRule(id){
+  try{
+    await fetch('/api/rules/'+id,{method:'DELETE'});
+    showToast('规则已删除');
+    renderRules();
+  }catch(e){showToast('删除失败',true)}
+}
+
+async function renderRules(){
+  var rules=await fetch('/api/rules').then(r=>r.json());
+  var tb=document.getElementById('rules-body');
+  var empty=document.getElementById('rules-empty');
+  if(!rules.length){tb.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  tb.innerHTML=rules.map(function(r){
+    var modeLabel=r.mode==='blacklist'?'<span style="color:#ef4444">黑名单</span>':'<span style="color:#22c55e">白名单</span>';
+    var typeLabel=r.target_type==='plugin'?'插件':(r.plugin?r.plugin+'-':'')+r.target;
+    var scope=r.context==='*'?'\u5168\u5c40':(_groupMap[r.context]?(r.context_type==='group'?'\u7fa4 '+r.context.substring(0,8)+'...':r.context):r.context);
+    return '<tr><td>'+scope+'</td><td>'+typeLabel+'</td><td>'+r.target+'</td><td>'+modeLabel+'</td><td><button class="btn btn-danger btn-sm" onclick="deleteRule('+r.id+')">删除</button></td></tr>';
+  }).join('');
+}
+
+
+loadDashboard();
+setInterval(function(){_sectionLoaded={};loadDashboard()},60000);
+</script>
+</body>
+</html>

@@ -1,12 +1,26 @@
-﻿import sys
+import sys
 import os
 import threading
+import socket
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import botpy
 from core.bot import PluginBot
 import config
+
+
+def find_available_port(start_port, max_tries=20):
+    for i in range(max_tries):
+        port = start_port + i
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind(('0.0.0.0', port))
+            sock.close()
+            return port
+        except OSError:
+            continue
+    return None
 
 
 def run_admin():
@@ -19,21 +33,7 @@ def run_admin():
     if port != preferred:
         print(f"[Admin] port {preferred} occupied, using {port}", flush=True)
     print(f"[Admin] http://localhost:{port}", flush=True)
-    uvicorn.run("admin:app", host="0.0.0.0", port=port, log_level="info", access_log=False)
-
-
-def find_available_port(start_port, max_tries=20):
-    import socket
-    for i in range(max_tries):
-        port = start_port + i
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.bind(('0.0.0.0', port))
-            sock.close()
-            return port
-        except OSError:
-            continue
-    return None
+    uvicorn.run("plugins.admin.admin:app", host="0.0.0.0", port=port, log_level="info", access_log=False)
 
 
 if __name__ == "__main__":

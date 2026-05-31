@@ -3,7 +3,6 @@ import os
 import random
 from datetime import datetime
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from core.utils import get_user_id
 from ..engine.trading import get_or_create_user
 from ..db import get_db
@@ -20,7 +19,7 @@ async def handle_work(message, args):
         return
 
     amount = random.randint(1000, 10000)
-    new_balance = user["balance"] + amount
+    new_balance = round(user["balance"] + amount, 2)
 
     conn = get_db()
     conn.execute("UPDATE users SET balance=?, last_work=? WHERE qq_id=?", (new_balance, today, qq_id))

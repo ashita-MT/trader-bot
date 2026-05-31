@@ -1,7 +1,6 @@
 ﻿import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-from data.local_cache import save_quote, load_quote
+from .data.local_cache import save_quote, load_quote
 from .db import get_db
 from .engine.real_market import REAL_STOCKS, fetch_all_quotes
 

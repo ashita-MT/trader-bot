@@ -1,5 +1,4 @@
 ﻿import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from core.utils import get_user_id
 from ..engine.trading import get_or_create_user, get_balance
 

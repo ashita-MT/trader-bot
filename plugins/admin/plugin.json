@@ -1,0 +1,7 @@
+﻿{
+  "name": "admin",
+  "version": "1.0.0",
+  "description": "Bot 后台管理面板 — 指令统计、群聊信息、插件配置",
+  "author": "",
+  "requirements": []
+}

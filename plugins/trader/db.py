@@ -18,6 +18,7 @@ def init_db():
             qq_id TEXT UNIQUE NOT NULL,
             nickname TEXT DEFAULT '',
             balance REAL DEFAULT 100000.0,
+            last_work TEXT DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -65,18 +66,63 @@ def init_db():
             volume INTEGER DEFAULT 0,
             date TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS number_lottery_draws (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            round INTEGER UNIQUE NOT NULL,
+            winning_number INTEGER,
+            drawn_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS number_lottery_tickets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            number INTEGER NOT NULL,
+            round INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS pool_lottery_draws (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            round INTEGER UNIQUE NOT NULL,
+            total_pool REAL DEFAULT 0,
+            winners_count INTEGER DEFAULT 0,
+            drawn_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS pool_lottery_tickets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            round INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
     """)
 
     for col, dtype, default in [
         ("is_virtual", "INTEGER", "0"),
         ("is_enabled", "INTEGER", "1"),
         ("volatility", "REAL", "3.0"),
+        ("last_work", "TEXT", "NULL"),
     ]:
         try:
             conn.execute(f"SELECT {col} FROM stocks LIMIT 1")
         except sqlite3.OperationalError:
-            conn.execute(f"ALTER TABLE stocks ADD COLUMN {col} {dtype} DEFAULT {default}")
-            print(f"[DB] added {col} column")
+            try:
+                conn.execute(f"ALTER TABLE stocks ADD COLUMN {col} {dtype} DEFAULT {default}")
+                print(f"[DB] added {col} column")
+            except sqlite3.OperationalError:
+                pass
+
+    try:
+        conn.execute("SELECT last_work FROM users LIMIT 1")
+    except sqlite3.OperationalError:
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN last_work TEXT DEFAULT NULL")
+            print("[DB] added last_work column to users")
+        except sqlite3.OperationalError:
+            pass
 
     conn.commit()
     conn.close()

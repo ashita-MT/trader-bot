@@ -92,6 +92,7 @@ input[type=number]{-moz-appearance:textfield}
 <div class="menu-item active" onclick="showSection('dashboard',this)">dashboard</div>
 <div class="menu-item" onclick="showSection('stocks',this)">real stocks</div>
 <div class="menu-item" onclick="showSection('virtual',this)">virtual market</div>
+<div class="menu-item" onclick="showSection('lottery',this)">lottery</div>
 <div class="menu-item" onclick="showSection('users',this)">users</div>
 <div class="menu-item" onclick="showSection('settings',this)">settings</div>
 </div>
@@ -148,6 +149,25 @@ input[type=number]{-moz-appearance:textfield}
 </div>
 </div>
 
+<div class="section" id="sec-lottery">
+<div class="card">
+<h2>number lottery</h2>
+<div class="row"><label>status</label><span class="val" id="nl-status">-</span></div>
+<div class="row"><label>current round</label><span class="val" id="nl-round">-</span></div>
+<div class="row"><label>tickets sold</label><span class="val" id="nl-tickets">-</span></div>
+<div class="row"><label>last winning number</label><span class="val" id="nl-last">-</span></div>
+</div>
+<div class="card">
+<h2>pool lottery</h2>
+<div class="row"><label>status</label><span class="val" id="pl-status">-</span></div>
+<div class="row"><label>current round</label><span class="val" id="pl-round">-</span></div>
+<div class="row"><label>tickets sold</label><span class="val" id="pl-tickets">-</span></div>
+<div class="row"><label>pool amount</label><span class="val" id="pl-pool">-</span></div>
+<div class="row"><label>last winners</label><span class="val" id="pl-last">-</span></div>
+<div class="row"><label>中奖比例</label><span class="val" id="pl-pct">-</span></div>
+</div>
+</div>
+
 <div class="section" id="sec-users">
 <div class="card">
 <h2>user list</h2>
@@ -190,18 +210,19 @@ input[type=number]{-moz-appearance:textfield}
 </div>
 <div class="card">
 <h2>number lottery</h2>
-<div class="row"><label>enable</label><label class="toggle"><input type="checkbox" id="set-nlottery" onchange="onNumberLotteryToggle()"><span class="slider"></span></label></div>
-<div class="row" id="nlottery-interval-row"><label>draw interval (sec)</label><input type="number" id="set-nlottery-interval" value="86400" min="60" style="width:100px;margin:0"></div>
-<div class="row" id="nlottery-price-row"><label>ticket price</label><input type="number" id="set-nlottery-price" value="100" min="1" style="width:100px;margin:0"></div>
-<div class="row" id="nlottery-prize-row"><label>prize amount</label><input type="number" id="set-nlottery-prize" value="10000" min="1" style="width:100px;margin:0"></div>
-<div class="row" id="nlottery-max-row"><label>max tickets per person</label><input type="number" id="set-nlottery-max" value="10" min="1" max="100" style="width:100px;margin:0"></div>
+<div class="row"><label>enable</label><label class="toggle"><input type="checkbox" id="set-nl"><span class="slider"></span></label></div>
+<div class="row"><label>interval (sec)</label><input type="number" id="set-nl-interval" value="86400" min="60" style="width:100px;margin:0"></div>
+<div class="row"><label>ticket price</label><input type="number" id="set-nl-price" value="100" min="1" style="width:100px;margin:0"></div>
+<div class="row"><label>prize amount</label><input type="number" id="set-nl-prize" value="10000" min="1" style="width:100px;margin:0"></div>
+<div class="row"><label>max tickets per user</label><input type="number" id="set-nl-max" value="10" min="1" style="width:100px;margin:0"></div>
 </div>
 <div class="card">
 <h2>pool lottery</h2>
-<div class="row"><label>enable</label><label class="toggle"><input type="checkbox" id="set-plottery" onchange="onPoolLotteryToggle()"><span class="slider"></span></label></div>
-<div class="row" id="plottery-interval-row"><label>draw interval (sec)</label><input type="number" id="set-plottery-interval" value="86400" min="60" style="width:100px;margin:0"></div>
-<div class="row" id="plottery-price-row"><label>ticket price</label><input type="number" id="set-plottery-price" value="100" min="1" style="width:100px;margin:0"></div>
-<div class="row" id="plottery-winners-row"><label>winners count</label><input type="number" id="set-plottery-winners" value="3" min="1" style="width:100px;margin:0"></div>
+<div class="row"><label>enable</label><label class="toggle"><input type="checkbox" id="set-pl"><span class="slider"></span></label></div>
+<div class="row"><label>interval (sec)</label><input type="number" id="set-pl-interval" value="86400" min="60" style="width:100px;margin:0"></div>
+<div class="row"><label>ticket price</label><input type="number" id="set-pl-price" value="100" min="1" style="width:100px;margin:0"></div>
+<div class="row"><label>中奖比例 (%)</label><input type="number" id="set-pl-pct" value="10" min="1" max="100" style="width:100px;margin:0"></div>
+<div class="row"><label>每人最大持有票数</label><input type="number" id="set-pl-max" value="10" min="1" style="width:100px;margin:0"></div>
 </div>
 <div class="card">
 <h2>web port</h2>
@@ -239,6 +260,24 @@ function showSection(name, el) {
   if (name === 'users') loadUsers();
   if (name === 'dashboard') loadDashboard();
   if (name === 'settings') loadConfig();
+  if (name === 'lottery') loadLottery();
+}
+
+async function loadLottery() {
+  try {
+    const r = await fetch('/api/lottery');
+    const d = await r.json();
+    document.getElementById('nl-status').textContent = d.nl_enabled ? 'on' : 'off';
+    document.getElementById('nl-round').textContent = d.nl_round || '-';
+    document.getElementById('nl-tickets').textContent = d.nl_tickets || 0;
+    document.getElementById('nl-last').textContent = d.nl_last || '-';
+    document.getElementById('pl-status').textContent = d.pl_enabled ? 'on' : 'off';
+    document.getElementById('pl-round').textContent = d.pl_round || '-';
+    document.getElementById('pl-tickets').textContent = d.pl_tickets || 0;
+    document.getElementById('pl-pool').textContent = d.pl_pool ? d.pl_pool.toFixed(2) : '-';
+    document.getElementById('pl-last').textContent = d.pl_last || '-';
+    document.getElementById('pl-pct').textContent = (d.pl_pct || 10) + '%';
+  } catch(e) { console.error(e); }
 }
 
 async function loadConfig() {
@@ -255,20 +294,19 @@ async function loadConfig() {
   document.getElementById('set-virtual').checked = cfg.enable_virtual_stocks !== false;
   document.getElementById('set-virtual-refresh').checked = cfg.enable_virtual_refresh !== false;
   document.getElementById('set-virtual-interval').value = cfg.virtual_refresh_interval || 300;
-  document.getElementById("set-nlottery").checked = cfg.enable_number_lottery !== false;
-  document.getElementById("set-nlottery-interval").value = cfg.number_lottery_interval || 86400;
-  document.getElementById("set-nlottery-price").value = cfg.number_lottery_ticket_price || 100;
-  document.getElementById("set-nlottery-prize").value = cfg.number_lottery_prize_amount || 10000;
-  document.getElementById("set-nlottery-max").value = cfg.number_lottery_max_tickets || 10;
-  document.getElementById("set-plottery").checked = cfg.enable_pool_lottery !== false;
-  document.getElementById("set-plottery-interval").value = cfg.pool_lottery_interval || 86400;
-  document.getElementById("set-plottery-price").value = cfg.pool_lottery_ticket_price || 100;
-  document.getElementById("set-plottery-winners").value = cfg.pool_lottery_winners || 3;
+  document.getElementById('set-nl').checked = cfg.enable_number_lottery !== false;
+  document.getElementById('set-nl-interval').value = cfg.number_lottery_interval || 86400;
+  document.getElementById('set-nl-price').value = cfg.number_lottery_ticket_price || 100;
+  document.getElementById('set-nl-prize').value = cfg.number_lottery_prize_amount || 10000;
+  document.getElementById('set-nl-max').value = cfg.number_lottery_max_tickets || 10;
+  document.getElementById('set-pl').checked = cfg.enable_pool_lottery !== false;
+  document.getElementById('set-pl-interval').value = cfg.pool_lottery_interval || 86400;
+  document.getElementById('set-pl-price').value = cfg.pool_lottery_ticket_price || 100;
+  document.getElementById('set-pl-pct').value = cfg.pool_lottery_winners_pct || 10;
+  document.getElementById('set-pl-max').value = cfg.pool_lottery_max_tickets || 10;
   updateModeBtn();
   onRealToggle();
   onVirtualToggle();
-  onNumberLotteryToggle();
-  onPoolLotteryToggle();
 }
 
 async function loadDashboard() {
@@ -515,17 +553,6 @@ function onVirtualToggle() {
   document.getElementById('virtual-interval-row').style.opacity = on ? '1' : '0.5';
 }
 
-function onNumberLotteryToggle() {
-  var on = document.getElementById("set-nlottery").checked;
-  ["set-nlottery-interval","set-nlottery-price","set-nlottery-prize","set-nlottery-max"].forEach(function(id){document.getElementById(id).disabled=!on;});
-  ["nlottery-interval-row","nlottery-price-row","nlottery-prize-row","nlottery-max-row"].forEach(function(id){document.getElementById(id).style.opacity=on?"1":"0.5";});
-}
-function onPoolLotteryToggle() {
-  var on = document.getElementById("set-plottery").checked;
-  ["set-plottery-interval","set-plottery-price","set-plottery-winners"].forEach(function(id){document.getElementById(id).disabled=!on;});
-  ["plottery-interval-row","plottery-price-row","plottery-winners-row"].forEach(function(id){document.getElementById(id).style.opacity=on?"1":"0.5";});
-}
-
 async function saveSettings() {
   var port = parseInt(document.getElementById('set-port-input').value);
   if (isNaN(port) || port < 1 || port > 65535) { showToast('invalid port', true); return; }
@@ -543,15 +570,16 @@ async function saveSettings() {
       enable_virtual_stocks: document.getElementById('set-virtual').checked,
       enable_virtual_refresh: document.getElementById('set-virtual-refresh').checked,
       virtual_refresh_interval: virtualInterval,
-      enable_number_lottery: document.getElementById("set-nlottery").checked,
-      number_lottery_interval: parseInt(document.getElementById("set-nlottery-interval").value) || 86400,
-      number_lottery_ticket_price: parseInt(document.getElementById("set-nlottery-price").value) || 100,
-      number_lottery_prize_amount: parseInt(document.getElementById("set-nlottery-prize").value) || 10000,
-      number_lottery_max_tickets: parseInt(document.getElementById("set-nlottery-max").value) || 10,
-      enable_pool_lottery: document.getElementById("set-plottery").checked,
-      pool_lottery_interval: parseInt(document.getElementById("set-plottery-interval").value) || 86400,
-      pool_lottery_ticket_price: parseInt(document.getElementById("set-plottery-price").value) || 100,
-      pool_lottery_winners: parseInt(document.getElementById("set-plottery-winners").value) || 3
+      enable_number_lottery: document.getElementById('set-nl').checked,
+      number_lottery_interval: parseInt(document.getElementById('set-nl-interval').value) || 86400,
+      number_lottery_ticket_price: parseInt(document.getElementById('set-nl-price').value) || 100,
+      number_lottery_prize_amount: parseInt(document.getElementById('set-nl-prize').value) || 10000,
+      number_lottery_max_tickets: parseInt(document.getElementById('set-nl-max').value) || 10,
+      enable_pool_lottery: document.getElementById('set-pl').checked,
+      pool_lottery_interval: parseInt(document.getElementById('set-pl-interval').value) || 86400,
+      pool_lottery_ticket_price: parseInt(document.getElementById('set-pl-price').value) || 100,
+      pool_lottery_winners_pct: parseInt(document.getElementById('set-pl-pct').value) || 10,
+      pool_lottery_max_tickets: parseInt(document.getElementById('set-pl-max').value) || 10
     })});
     showToast('saved, restart to apply changes');
     await loadConfig();

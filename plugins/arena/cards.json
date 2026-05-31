@@ -1,0 +1,231 @@
+{
+  "黄泉": {
+    "name": "黄泉",
+    "emoji": "💀",
+    "hp": 33,
+    "atk_level": 2,
+    "def_level": 3,
+    "dice": [
+      {
+        "type": 4,
+        "count": 3
+      },
+      {
+        "type": 6,
+        "count": 1
+      },
+      {
+        "type": 8,
+        "count": 1
+      }
+    ],
+    "skill": "洞穿",
+    "skill_desc": "攻击时选定骰子全为4触发洞穿(无视防御)，每次触发攻击等级+1"
+  },
+  "遐蝶": {
+    "name": "遐蝶",
+    "emoji": "🦋",
+    "hp": 27,
+    "atk_level": 3,
+    "def_level": 2,
+    "dice": [
+      {
+        "type": 4,
+        "count": 2
+      },
+      {
+        "type": 6,
+        "count": 1
+      },
+      {
+        "type": 8,
+        "count": 2
+      }
+    ],
+    "skill_desc": "防御时伤害≥8???+1，伤害≤5???3???"
+  },
+  "流萤": {
+    "name": "流萤",
+    "emoji": "🔥",
+    "hp": 28,
+    "atk_level": 4,
+    "def_level": 3,
+    "dice": [
+      {
+        "type": 4,
+        "count": 2
+      },
+      {
+        "type": 6,
+        "count": 3
+      }
+    ],
+    "skill_desc": "攻击时两组相同点数获连击，满血时攻击+5"
+  },
+  "知更鸟": {
+    "name": "知更鸟",
+    "emoji": "🎵",
+    "hp": 30,
+    "atk_level": 4,
+    "def_level": 3,
+    "dice": [
+      {
+        "type": 4,
+        "count": 3
+      },
+      {
+        "type": 6,
+        "count": 2
+      }
+    ],
+    "skill_desc": "攻击时全偶数则升级所选骰子"
+  },
+  "大黑塔": {
+    "name": "大黑塔",
+    "emoji": "🧙",
+    "hp": 42,
+    "atk_level": 3,
+    "def_level": 2,
+    "dice": [
+      {
+        "type": 6,
+        "count": 3
+      },
+      {
+        "type": 8,
+        "count": 2
+      }
+    ],
+    "skill_desc": "回合结束+1曜彩骰次数，累积4次特殊触发后每回合获得跃升"
+  },
+  "卡芙卡": {
+    "name": "卡芙卡",
+    "emoji": "💋",
+    "hp": 30,
+    "atk_level": 4,
+    "def_level": 3,
+    "dice": [
+      {
+        "type": 4,
+        "count": 3
+      },
+      {
+        "type": 6,
+        "count": 2
+      }
+    ],
+    "skill_desc": "攻击时每个不同点数中毒对方1层，防御失败移除对方1层中毒"
+  },
+  "三月七": {
+    "name": "三月七",
+    "emoji": "🌸",
+    "hp": 25,
+    "atk_level": 4,
+    "def_level": 3,
+    "dice": [
+      {
+        "type": 4,
+        "count": 3
+      },
+      {
+        "type": 6,
+        "count": 2
+      }
+    ],
+    "skill_desc": "攻击/防御时有一组相同点数就造成3点眩伤"
+  },
+  "丹恒·腾荒": {
+    "name": "丹恒·腾荒",
+    "emoji": "⚔",
+    "hp": 25,
+    "atk_level": 3,
+    "def_level": 2,
+    "dice": [
+      {
+        "type": 6,
+        "count": 3
+      },
+      {
+        "type": 8,
+        "count": 2
+      }
+    ],
+    "skill_desc": "攻击值≥18时下次防御+3并获得反击，防御结束降回"
+  },
+  "爻光": {
+    "name": "爻光",
+    "emoji": "✨",
+    "hp": 35,
+    "atk_level": 3,
+    "def_level": 2,
+    "dice": [
+      {
+        "type": 6,
+        "count": 3
+      },
+      {
+        "type": 8,
+        "count": 2
+      }
+    ],
+    "skill_desc": "攻击时四次重投，超过2次后每次+2荆棘，攻击值≥18则清荆棘+1曜彩骰"
+  },
+  "昔涟": {
+    "name": "昔涟",
+    "emoji": "🌊",
+    "hp": 30,
+    "atk_level": 3,
+    "def_level": 2,
+    "dice": [
+      {
+        "type": 4,
+        "count": 1
+      },
+      {
+        "type": 6,
+        "count": 3
+      },
+      {
+        "type": 8,
+        "count": 1
+      }
+    ],
+    "skill_desc": "累加攻防值，超过24后攻击等级变5，此后每回合获得跃升"
+  },
+  "白厄": {
+    "name": "白厄",
+    "emoji": "☠",
+    "hp": 20,
+    "atk_level": 4,
+    "def_level": 2,
+    "dice": [
+      {
+        "type": 6,
+        "count": 3
+      },
+      {
+        "type": 8,
+        "count": 2
+      }
+    ],
+    "skill_desc": "攻击时虹吸伤害额50%，防御时全同点数获不屈(一局一次)"
+  },
+  "风堇": {
+    "name": "风堇",
+    "emoji": "🍃",
+    "hp": 28,
+    "atk_level": 2,
+    "def_level": 2,
+    "dice": [
+      {
+        "type": 6,
+        "count": 4
+      },
+      {
+        "type": 8,
+        "count": 1
+      }
+    ],
+    "skill_desc": "攻击后力量设为攻击值50%，全6点则100%并治愈6点"
+  }
+}

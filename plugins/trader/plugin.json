@@ -1,0 +1,7 @@
+﻿{
+  "name": "trader",
+  "version": "1.6.0",
+  "description": "QQ virtual stock trading plugin with real-time market data",
+  "author": "",
+  "requirements": ["apscheduler>=3.10.0", "fastapi>=0.100.0", "uvicorn>=0.23.0"]
+}

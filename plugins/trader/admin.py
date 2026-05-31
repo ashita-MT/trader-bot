@@ -1,17 +1,23 @@
 ﻿import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Plugin root directory
+PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
+
+sys.path.insert(0, PLUGIN_DIR)
 
 import sqlite3
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+
+app = FastAPI(title="Trader Admin")
+
+DB_PATH = os.path.join(PLUGIN_DIR, "trader.db")
+TEMPLATE_DIR = os.path.join(PLUGIN_DIR, "templates")
+
+# Import config from parent project
+sys.path.insert(0, os.path.join(PLUGIN_DIR, "..", ".."))
 import config
-
-app = FastAPI(title="Bot Admin")
-
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins", "stock_market", "trader.db")
-TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 
 
 def get_db():
@@ -36,7 +42,15 @@ async def get_config():
 async def set_config(request: Request):
     body = await request.json()
     for k, v in body.items():
-        if k in ("interaction_mode", "bot_name", "web_port", "enable_real_stocks", "enable_virtual_stocks", "enable_real_refresh", "enable_virtual_refresh", "real_refresh_interval", "virtual_refresh_interval", "enable_number_lottery", "number_lottery_interval", "number_lottery_ticket_price", "number_lottery_prize_amount", "number_lottery_max_tickets", "enable_pool_lottery", "pool_lottery_interval", "pool_lottery_ticket_price", "pool_lottery_winners"):
+        if k in ("interaction_mode", "bot_name", "web_port",
+                 "enable_real_stocks", "enable_virtual_stocks",
+                 "enable_real_refresh", "enable_virtual_refresh",
+                 "real_refresh_interval", "virtual_refresh_interval",
+                 "enable_number_lottery", "number_lottery_interval",
+                 "number_lottery_ticket_price", "number_lottery_prize_amount",
+                 "number_lottery_max_tickets",
+                 "enable_pool_lottery", "pool_lottery_interval",
+                 "pool_lottery_ticket_price", "pool_lottery_winners_pct", "pool_lottery_max_tickets"):
             config.set(k, v)
     return JSONResponse(config.get())
 
@@ -62,8 +76,7 @@ async def get_stocks():
         rows = conn.execute("SELECT * FROM stocks ORDER BY is_virtual DESC, code").fetchall()
         conn.close()
         return JSONResponse([dict(r) for r in rows])
-    except Exception as e:
-        print(f"[Admin] /api/stocks error: {e}", flush=True)
+    except Exception:
         return JSONResponse([])
 
 
@@ -97,7 +110,6 @@ async def create_virtual_stock(request: Request):
         name = body.get("name", "").strip()
         price = float(body.get("price", 0))
         volatility = float(body.get("volatility", 3.0))
-        print(f"[Admin] create virtual: code={code} name={name} price={price} vol={volatility}", flush=True)
 
         if not code or not name:
             return JSONResponse({"error": "code and name required"}, status_code=400)
@@ -118,10 +130,8 @@ async def create_virtual_stock(request: Request):
         )
         conn.commit()
         conn.close()
-        print(f"[Admin] create virtual success: {code}", flush=True)
         return JSONResponse({"ok": True})
     except Exception as e:
-        print(f"[Admin] create virtual error: {e}", flush=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
@@ -156,18 +166,14 @@ async def update_virtual_stock(code: str, request: Request):
             conn.execute("UPDATE holdings SET stock_code=? WHERE stock_code=?", (new_code, code))
             conn.execute("UPDATE orders SET stock_code=? WHERE stock_code=?", (new_code, code))
 
-        print(f"[Admin] update virtual: {code} -> code={new_code} name={name} price={price} enabled={is_enabled} vol={volatility}", flush=True)
-
         conn.execute(
             "UPDATE stocks SET code=?, name=?, current_price=?, open_price=?, high_price=?, low_price=?, is_enabled=?, volatility=? WHERE code=? AND is_virtual=1",
             (new_code, name, price, price, price, price, is_enabled, volatility, code),
         )
         conn.commit()
         conn.close()
-        print(f"[Admin] update virtual success: {new_code}", flush=True)
         return JSONResponse({"ok": True})
     except Exception as e:
-        print(f"[Admin] update virtual error: {e}", flush=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
@@ -188,12 +194,43 @@ async def delete_virtual_stock(code: str):
         conn.execute("DELETE FROM stocks WHERE code=? AND is_virtual=1", (code,))
         conn.commit()
         conn.close()
-        print(f"[Admin] delete virtual success: {code}", flush=True)
         return JSONResponse({"ok": True})
     except Exception as e:
-        print(f"[Admin] delete virtual error: {e}", flush=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
+
+
+@app.get("/api/lottery")
+async def get_lottery():
+    try:
+        conn = get_db()
+        nl_tickets = conn.execute("SELECT COUNT(*) FROM number_lottery_tickets t JOIN number_lottery_draws d ON t.round = d.round WHERE d.winning_number IS NULL").fetchone()[0]
+        nl_draw = conn.execute("SELECT MAX(round) FROM number_lottery_draws").fetchone()[0] or 0
+        nl_last = conn.execute("SELECT winning_number FROM number_lottery_draws WHERE winning_number IS NOT NULL ORDER BY round DESC LIMIT 1").fetchone()
+        nl_last_num = nl_last[0] if nl_last else None
+        pl_tickets = conn.execute("SELECT COUNT(*) FROM pool_lottery_tickets t JOIN pool_lottery_draws d ON t.round = d.round WHERE d.total_pool = 0").fetchone()[0]
+        pl_draw = conn.execute("SELECT MAX(round) FROM pool_lottery_draws").fetchone()[0] or 0
+        pl_last = conn.execute("SELECT winners_count, total_pool FROM pool_lottery_draws WHERE total_pool > 0 ORDER BY round DESC LIMIT 1").fetchone()
+        conn.close()
+        return JSONResponse({
+            "nl_enabled": config.get("enable_number_lottery", True),
+            "nl_round": nl_draw + 1,
+            "nl_tickets": nl_tickets,
+            "nl_last": str(nl_last_num) if nl_last_num else None,
+            "pl_enabled": config.get("enable_pool_lottery", True),
+            "pl_round": pl_draw + 1,
+            "pl_tickets": pl_tickets,
+            "pl_pool": 0,
+            "pl_last": f"{pl_last[0]} winners" if pl_last else None,
+            "pl_pct": config.get("pool_lottery_winners_pct", 10),
+        })
+    except Exception as e:
+        return JSONResponse({
+            "nl_enabled": config.get("enable_number_lottery", True),
+            "nl_round": 1, "nl_tickets": 0, "nl_last": None,
+            "pl_enabled": config.get("enable_pool_lottery", True),
+            "pl_round": 1, "pl_tickets": 0, "pl_pool": 0, "pl_last": None, "pl_pct": 10,
+        })
 
 @app.get("/api/users")
 async def get_users():
@@ -229,11 +266,3 @@ async def get_user_detail(qq_id: str):
         return JSONResponse({"user": dict(user), "holdings": [dict(r) for r in holdings]})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
-
-
-if __name__ == "__main__":
-    import uvicorn
-    port = config.get("web_port", 6662)
-    print(f"[Admin] http://localhost:{port}", flush=True)
-    uvicorn.run(app, host="0.0.0.0", port=port)
-
